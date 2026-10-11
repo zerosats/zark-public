@@ -1,0 +1,9 @@
+[package]
+name="fixed_generator"
+type="lib"
+authors=[]
+compiler_version=">=1.0.0"
+
+[dependencies]
+bigcurve={path = "../vendor/noir_bigcurve"}
+bignum={path = "../vendor/noir-bignum"}

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "active": true,
+    "category": "Finance",
+    "shortDescription": "Zark MutinyNet test wallet",
+    "resources": { "stage/": "app/" },
+    "macOS": { "minimumSystemVersion": "13.0", "signingIdentity": "-" },
+    "linux": { "appimage": { "bundleMediaFramework": false } }
+  }
+}

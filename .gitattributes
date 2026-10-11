@@ -1,0 +1,2 @@
+# Unified patches deliberately contain a single space on blank context lines.
+runtime/fast-prover/*.patch -whitespace

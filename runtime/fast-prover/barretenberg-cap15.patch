@@ -1,0 +1,10 @@
+--- a/barretenberg/cpp/src/barretenberg/ecc/scalar_multiplication/pippenger_arena_layout.hpp
++++ b/barretenberg/cpp/src/barretenberg/ecc/scalar_multiplication/pippenger_arena_layout.hpp
+@@ -87,6 +87,6 @@
+                                                  size_t num_logical_threads) noexcept
+ {
+-    constexpr uint32_t MAX_C = 20;
++    constexpr uint32_t MAX_C = 16;
+     uint32_t best = 2;
+ 
+     static_cast<void>(n_input);

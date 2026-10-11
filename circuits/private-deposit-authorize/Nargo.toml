@@ -1,0 +1,12 @@
+[package]
+name = "private_deposit_authorize"
+type = "bin"
+authors = [""]
+compiler_version = ">=1.0.0"
+[dependencies]
+lineage = { path = "../private-lineage-relations" }
+recovery = { path = "../private-recovery-relations" }
+bootstrap = { path = "../private-deposit-relations" }
+bitcoin_relations = { path = "../relations" }
+
+packing = { path = "../packing" }

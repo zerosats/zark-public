@@ -1,0 +1,12 @@
+[package]
+name = "relations"
+type = "lib"
+authors = [""]
+compiler_version = ">=1.0.0"
+
+[dependencies]
+bigcurve = { path = "../vendor/noir_bigcurve" }
+bignum = { path = "../vendor/noir-bignum" }
+fixed_generator = { path = "../fixed-generator" }
+
+app_hash = { path = "../app-hash" }

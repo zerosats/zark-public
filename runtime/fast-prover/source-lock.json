@@ -1,0 +1,530 @@
+{
+  "protocol_version": 10,
+  "noir_commit": "75061fab15986eedee4e7d9104ff87dd9fa4ca10",
+  "bb_commit": "49a592109ec4f18d79212b43d621891aaf36f7b6",
+  "sources": {
+    "circuits/app-hash/Nargo.toml": {
+      "sha256": "e86560af321f311d14eb21e9ef1dd0f2d83b86dbd406afb0a3b74d0ce1657387"
+    },
+    "circuits/app-hash/src/lib.nr": {
+      "sha256": "284732e4f27513c875ef2d950382acf86d11604afd505eb41200997e9272cca8"
+    },
+    "circuits/fixed-generator/Nargo.toml": {
+      "sha256": "3e3efec71aabcb2618ed48d57eb2854fb6e87e452d5d0e811573b36fd9a478ca"
+    },
+    "circuits/fixed-generator/src/batch_hint.nr": {
+      "sha256": "9835f11b0eda11e0c6e674a34373b3d3a590bc4144fa57da5bfc0a5fd87bef48"
+    },
+    "circuits/fixed-generator/src/digits.nr": {
+      "sha256": "2214e37dd559f3c65a829ad79d5ae839aff76d1410392110069c413b629687f5"
+    },
+    "circuits/fixed-generator/src/fixed_base.nr": {
+      "sha256": "f6e7c30f344e46ce9ed9c2be2acb07e6e1f81bf9c7847fd28b2b5b6dda177179"
+    },
+    "circuits/fixed-generator/src/lib.nr": {
+      "sha256": "e3434b74dd78d6e218a7eeed9bd4dd51b1d94cebd22f47235d7bc004ce18ca10"
+    },
+    "circuits/fixed-generator/src/positional_add.nr": {
+      "sha256": "faf6d720f0f07dd1f98d78e996e1f705eb3487fabab70d4994096037f48378d9"
+    },
+    "circuits/fixed-generator/src/tables.nr": {
+      "sha256": "f121f3520544f5c4cd1433ef12003eba5723e5d2410bcc6c4ea8e5432e9ab1ce"
+    },
+    "circuits/packing/Nargo.toml": {
+      "sha256": "eba8495bdef44e3e46463d99a9a56d6efb137ef191eab23cea03929c18906517"
+    },
+    "circuits/packing/src/lib.nr": {
+      "sha256": "4e1972e0c84840b3be440d5e0fce7c1b0fda66bd50629dfcc93fe74bd5b5f2bf"
+    },
+    "circuits/private-deposit-authorize/Nargo.toml": {
+      "sha256": "edf66235ab31473fede830241e3e5e09e3793f6af38e795b4ed12109b289718b"
+    },
+    "circuits/private-deposit-authorize/src/main.nr": {
+      "sha256": "d23cf2cdc00a4db98c994b1fe8cecd38e13f38ed9dfd7b96b151f1c3c9f5e781"
+    },
+    "circuits/private-deposit-relations/Nargo.toml": {
+      "sha256": "505ac548d8756dde7334f66403cf5b50d6fb4d92146869e46abec4385f1ea810"
+    },
+    "circuits/private-deposit-relations/src/lib.nr": {
+      "sha256": "54ae9c966b31e7be5997bc6070de8c4ff9783cc5b887934be851df0a70071530"
+    },
+    "circuits/private-exit-from-origin/Nargo.toml": {
+      "sha256": "bf9ab457fc46c59dbe0cc9fac0634e2b9b497f234fb1cdacaba778e2934d646c"
+    },
+    "circuits/private-exit-from-origin/src/main.nr": {
+      "sha256": "33640cf20bb4160de39be06020b8338715db5d889eb93710035618224efb242f"
+    },
+    "circuits/private-exit-from-transfer/Nargo.toml": {
+      "sha256": "1b17d4280c6f957b08c3c4e48d7bac28e66ce10df0d2a50f10b87d6a7fa712a8"
+    },
+    "circuits/private-exit-from-transfer/src/main.nr": {
+      "sha256": "c74fd45d6213d5735e41591db5c3f9a4b28a2dce18d21690c4cad579cb0f0403"
+    },
+    "circuits/private-lineage-relations/Nargo.toml": {
+      "sha256": "ed9c1f052bef59a27afce6979db7eff74339c5557070190ef334d519387b670c"
+    },
+    "circuits/private-lineage-relations/src/lib.nr": {
+      "sha256": "6192242c2244c98eadf7e111357bb305edea370691d7d543c87bc013ba9111fa"
+    },
+    "circuits/private-lineage-relations/src/validation_tests.nr": {
+      "sha256": "5c2084509ec6cea1a3d61ba8eff955714d9a4658acd873396c0552b1a95fc03b"
+    },
+    "circuits/private-receiver-authorize/Nargo.toml": {
+      "sha256": "0be71a3dff71b207b9904b41de5c26bf78dad285ef48700a7aff8cea9fc78532"
+    },
+    "circuits/private-receiver-authorize/src/main.nr": {
+      "sha256": "43f7d66a22a54a838076504e926bd7c6cc2e4bc07d1dd285319cc0d3b4a42f27"
+    },
+    "circuits/private-recovery-relations/Nargo.toml": {
+      "sha256": "a989a0814cfa94834eb9eabfd04c8e45778b5f8a931ebf0ebe0ba99775223c00"
+    },
+    "circuits/private-recovery-relations/src/lib.nr": {
+      "sha256": "2fdc88c3cf79f4ba3b14aae3341f5f61782e3906aca2947494c0dc8bc4b232b4"
+    },
+    "circuits/private-recovery-relations/src/sha_fixed.nr": {
+      "sha256": "50db13abd0f7fa4acb1ae860fc8a0a4b1128167a4a28b07f5102b8d4e67ece4b"
+    },
+    "circuits/private-sender-from-origin/Nargo.toml": {
+      "sha256": "24eb76c1c36545a6073829512e13da97caefbca598d0b668219311d589c646e6"
+    },
+    "circuits/private-sender-from-origin/src/main.nr": {
+      "sha256": "6bc169a2f7c0bc4eb5dfe6f9659518049cedc15c18539d17470793e0dffc491c"
+    },
+    "circuits/private-sender-from-transfer/Nargo.toml": {
+      "sha256": "3f8e8c861ad9d3848a7775db24f9dd05b774ddc6b6c57d4747463c3a934aa9b0"
+    },
+    "circuits/private-sender-from-transfer/src/main.nr": {
+      "sha256": "887185728ef19aeb51f56333423f62dd108059bde8f5dddbb4036a47c63dca93"
+    },
+    "circuits/private-transfer-relations/Nargo.toml": {
+      "sha256": "346b7a5f89556ee4888e5930470bb50ac4b3708eeca2b9ba8b16500804b270a0"
+    },
+    "circuits/private-transfer-relations/src/claim.nr": {
+      "sha256": "5d8e27b8699e3faef3dc840e45281776238b2ba01cd7c72380ee3a5f9d32bb10"
+    },
+    "circuits/private-transfer-relations/src/exit.nr": {
+      "sha256": "1b6fa6cac712ad2e96a8dccd545a77fdf1de929f3dc978586358cf6b22cf2fde"
+    },
+    "circuits/private-transfer-relations/src/lib.nr": {
+      "sha256": "ffb05869a4f426d510121aa01ef521b160fb01ff0845df6d9fef8326c6150be5"
+    },
+    "circuits/private-transfer-relations/src/sender.nr": {
+      "sha256": "3df0891c158270669914ccd29fbdbbd8de3a53fd02ef8b17ec3cfa84fe58255b"
+    },
+    "circuits/recursion/Nargo.toml": {
+      "sha256": "8ae87c3a60172063b2aa5fa31f2607d6f383a42ee407cc3794e50f46b9691d98"
+    },
+    "circuits/recursion/src/lib.nr": {
+      "sha256": "bd849608712921bdab0e8ebc515ea808bf9aadd1ac29e270e245f9ad3c3de878"
+    },
+    "circuits/relations/Nargo.toml": {
+      "sha256": "cd00b46e18f5c36d27e0f017a0b9708f7e0e9961f95177f164599fd5d1de822c"
+    },
+    "circuits/relations/src/byte_checks.nr": {
+      "sha256": "72c0f627a412c5653cde78149cbd095e24d95653151328aed3aa4001f42fe846"
+    },
+    "circuits/relations/src/lib.nr": {
+      "sha256": "f2fed5b1d83be1c3995671c5baa343c59445865f321339009b36d58abc725f7f"
+    },
+    "circuits/relations/src/point_addition.nr": {
+      "sha256": "2daf5bbbf929c9d13c8957f0c8aedbabf8a5fc6d1a39079f013fb581fe168c5f"
+    },
+    "circuits/relations/src/sha_fixed.nr": {
+      "sha256": "50db13abd0f7fa4acb1ae860fc8a0a4b1128167a4a28b07f5102b8d4e67ece4b"
+    },
+    "circuits/vendor/noir-bignum/Nargo.toml": {
+      "sha256": "ab4881cef3dcb113f695cccc1be9f8250608006a365072f74c01e3f195bfca88"
+    },
+    "circuits/vendor/noir-bignum/src/benchmarks/bignum_benchmarks.nr": {
+      "sha256": "5acc34af1db26d7bced7a23bd0cc3938c2aaeced91495a4d1b6cb4701a8a9972"
+    },
+    "circuits/vendor/noir-bignum/src/benchmarks/mod.nr": {
+      "sha256": "f5c43283f75253610f24e7df88f5d8c81b6427d18bd48d39eeafebb857e8bfdb"
+    },
+    "circuits/vendor/noir-bignum/src/bignum.nr": {
+      "sha256": "a98d22e3c7c649199bc0ad6c0ceb884795572308780b067cda5f39e196170a5a"
+    },
+    "circuits/vendor/noir-bignum/src/constants.nr": {
+      "sha256": "2e7f4b89303f5cebd2bd82e3a9fd83654e60a0d49fcc7fe1074c9cb65a285cf8"
+    },
+    "circuits/vendor/noir-bignum/src/fields/U1024.nr": {
+      "sha256": "cae01045c57528a71a1e37c21668065570a9027fbb1bfd7652a023a36fd118a9"
+    },
+    "circuits/vendor/noir-bignum/src/fields/U2048.nr": {
+      "sha256": "c7fb44f167dfb966e7933fce2ab6aedd7ab8cdbd5852c1a9dea52868ce65bed3"
+    },
+    "circuits/vendor/noir-bignum/src/fields/U256.nr": {
+      "sha256": "5cb8552bda63998b2cf225df97fe70d086e7d8bb94e3cbccf81fca7d2abf97c1"
+    },
+    "circuits/vendor/noir-bignum/src/fields/U384.nr": {
+      "sha256": "261af5fe6d2490392eb87049a944a282498f7a144250753a62bc601893e65e5a"
+    },
+    "circuits/vendor/noir-bignum/src/fields/U4096.nr": {
+      "sha256": "f35092534d3c330fa80f649c44bd48079c884e1ab1dde653c65e49059eebe261"
+    },
+    "circuits/vendor/noir-bignum/src/fields/U512.nr": {
+      "sha256": "2a5ac1c22a1abdd55606fa22097c5166a94ad2d2586d3e890165cb993de66641"
+    },
+    "circuits/vendor/noir-bignum/src/fields/U768.nr": {
+      "sha256": "90b9c546866bf9bd4d27252b54520038f21e4be93aa8da83170812ea86b15a1c"
+    },
+    "circuits/vendor/noir-bignum/src/fields/U8192.nr": {
+      "sha256": "4844950b9e8c76bf89984f4d5f64e4c4e46f3afbf0d6ad62cf43b928eae2ec13"
+    },
+    "circuits/vendor/noir-bignum/src/fields/bls12_377Fq.nr": {
+      "sha256": "94f044bca2119806368721ace642c2c4dedc7d69add7de87a0230a5cd03c4cd8"
+    },
+    "circuits/vendor/noir-bignum/src/fields/bls12_377Fr.nr": {
+      "sha256": "4eeaeef2fefd35bbf8cd3500943485f491c5e1ebfe08db4a3cf6768d8657d78d"
+    },
+    "circuits/vendor/noir-bignum/src/fields/bls12_381Fq.nr": {
+      "sha256": "ad43067723332f3c7832621edf9209f0a882ca3f435025bc3a64ce007761ab36"
+    },
+    "circuits/vendor/noir-bignum/src/fields/bls12_381Fr.nr": {
+      "sha256": "9f4b3e6a258ae53509feb9280ce82000ea1b05ee12d4c6b91f2f12ebfeab5304"
+    },
+    "circuits/vendor/noir-bignum/src/fields/bn254Fq.nr": {
+      "sha256": "ab43b5209c59d0bec625f31b6a414779c523fe9d6a7fc0d707517e7fc419a607"
+    },
+    "circuits/vendor/noir-bignum/src/fields/ed25519Fq.nr": {
+      "sha256": "0094821ed1d089b877b96397c6552f0c59e25fcc593e2c5bbdc1b91d96345d9c"
+    },
+    "circuits/vendor/noir-bignum/src/fields/ed25519Fr.nr": {
+      "sha256": "c62ef62bef70020c3d9032a941c8119b4dde50a6951c8f53204e90d1de32ea82"
+    },
+    "circuits/vendor/noir-bignum/src/fields/mnt4_753Fq.nr": {
+      "sha256": "e90eb6027953f5fcdc180802500ff970cdf6dd7e69d77865237bb90083ad7412"
+    },
+    "circuits/vendor/noir-bignum/src/fields/mnt4_753Fr.nr": {
+      "sha256": "264b1161defbe4d6c8ee1f65c3b6d5668e949fcc0a70923e860836c8ea406074"
+    },
+    "circuits/vendor/noir-bignum/src/fields/mnt6_753Fq.nr": {
+      "sha256": "1642901da3ee5db308b964b7abffa8f662eb61d6a9151cf307d8063e56fa1c48"
+    },
+    "circuits/vendor/noir-bignum/src/fields/mnt6_753Fr.nr": {
+      "sha256": "cdf95531b7bd4abbbad5386d1ceafe6b1f4b17c96dd3d0c2aa6e99f69edd243b"
+    },
+    "circuits/vendor/noir-bignum/src/fields/mod.nr": {
+      "sha256": "b38b3f12e043453f8eba8ba66648d9a579dfed9a2ddb52a5a5e9c2fb4b2b82f9"
+    },
+    "circuits/vendor/noir-bignum/src/fields/pallasFq.nr": {
+      "sha256": "ccfc4169ca39add35bd5b2a20d30fbb8010ef122e2d99c431552dedc65f872f9"
+    },
+    "circuits/vendor/noir-bignum/src/fields/pallasFr.nr": {
+      "sha256": "19cbce3d32fd73907122a2c1a5b227d6621f5d2d87cf64a258515a6441b8f47a"
+    },
+    "circuits/vendor/noir-bignum/src/fields/secp256k1Fq.nr": {
+      "sha256": "56e2b0b51be20a73cf3c2716e440708b0a03eddc16c4d436528ed16e71bbd652"
+    },
+    "circuits/vendor/noir-bignum/src/fields/secp256k1Fr.nr": {
+      "sha256": "bbe0d4f917d089cc5a671b3a319d76f440cce6d90066d162bf118148df04df43"
+    },
+    "circuits/vendor/noir-bignum/src/fields/secp256r1Fq.nr": {
+      "sha256": "7962131ca49a6dbdb798bfc1174ba1758c1698d6313f56510da460ba0f7d2c1b"
+    },
+    "circuits/vendor/noir-bignum/src/fields/secp256r1Fr.nr": {
+      "sha256": "c6b8182dffa7cc12fbff890c7db4115e5d881a3d01cc3efe63baf3783ea40cd3"
+    },
+    "circuits/vendor/noir-bignum/src/fields/secp384r1Fq.nr": {
+      "sha256": "97a969c39a24e378b32a79d67c5bdfcf21e8571ff639d24e90d2f5d0dee9e2ee"
+    },
+    "circuits/vendor/noir-bignum/src/fields/secp384r1Fr.nr": {
+      "sha256": "d89cb7f8c70556d57383b27392cd98702419dd6d4bb784d3059a388996d252cc"
+    },
+    "circuits/vendor/noir-bignum/src/fields/vestaFq.nr": {
+      "sha256": "74470f9c1df101ed109c60389d82a3e0e014aadcb95b97b4d4b17fab789399f4"
+    },
+    "circuits/vendor/noir-bignum/src/fields/vestaFr.nr": {
+      "sha256": "fe750fc9eb4794605d58a7c6f090c643d066c4eca6f021a8f94ad881979240bd"
+    },
+    "circuits/vendor/noir-bignum/src/fns/constrained_ops.nr": {
+      "sha256": "5e1d1c9186ef74e55aeaf8c9bf4607b51149a17ac30893b139b46c2d7567f08a"
+    },
+    "circuits/vendor/noir-bignum/src/fns/expressions.nr": {
+      "sha256": "7b032c162c0ac21138646aaa7ec742d7260477ec01cbf56a828724c78b6c8c72"
+    },
+    "circuits/vendor/noir-bignum/src/fns/mod.nr": {
+      "sha256": "f70408e4cedccf48f0bfdf9d21ca028639612d5271368617b4e93988b210d57a"
+    },
+    "circuits/vendor/noir-bignum/src/fns/serialization.nr": {
+      "sha256": "e0cffbc9438f77a012b6758047fed34fdd966d32d51346c9ae9baa07c33a85ef"
+    },
+    "circuits/vendor/noir-bignum/src/fns/unconstrained_helpers.nr": {
+      "sha256": "fdde82647dc6dc42fa38acf64c3b946ea1529f6c68e4f17998296711991fa9bd"
+    },
+    "circuits/vendor/noir-bignum/src/fns/unconstrained_ops.nr": {
+      "sha256": "a871ecad9d67b418dd417d4af282a910165b59ce89c7ae5bdc57a63f069cd2bb"
+    },
+    "circuits/vendor/noir-bignum/src/lib.nr": {
+      "sha256": "fd3d392ff8bacaec0446471e81a803bbe78bab4539ab619259bf0664a3959a32"
+    },
+    "circuits/vendor/noir-bignum/src/params.nr": {
+      "sha256": "d31c9d76d98944689be584e8e1cf764a8d0908dc1165382ceba2dfe14da349b9"
+    },
+    "circuits/vendor/noir-bignum/src/runtime_bignum.nr": {
+      "sha256": "76643b31ba581f3f456a5c71387f1ea745c66505eb168fe366dac88b965f438c"
+    },
+    "circuits/vendor/noir-bignum/src/tests/bignum_test.nr": {
+      "sha256": "6bc6b4c3568014cb74283a137d0d9a4cd3a328d456762b07bd03f7e562dea01a"
+    },
+    "circuits/vendor/noir-bignum/src/tests/mod.nr": {
+      "sha256": "c007b6ac0b0799b164b601b93e22e06f36168d5b6ba69049749df22c1fe6d2d1"
+    },
+    "circuits/vendor/noir-bignum/src/tests/runtime_bignum_test.nr": {
+      "sha256": "124f051e85d3db74748c35d9773743668f317d6eb91648b1712b4ea380c641e9"
+    },
+    "circuits/vendor/noir-bignum/src/utils/map.nr": {
+      "sha256": "4bd80a71f7108758b0d7ca6c2fdfbd21ad483965ba2d8781fc321a4a4259db55"
+    },
+    "circuits/vendor/noir-bignum/src/utils/mod.nr": {
+      "sha256": "0284d842a0ad9254aa59f3dd93cbe20cbbcab802e78e13d4a99a38e82fba46b2"
+    },
+    "circuits/vendor/noir-bignum/src/utils/msb.nr": {
+      "sha256": "29d42037322f9078363ad5fedf3aa2f11544533d975899a0b2e1f7755e15773b"
+    },
+    "circuits/vendor/noir-bignum/src/utils/split_bits.nr": {
+      "sha256": "9c4af898fb85c133c2724f7a98e7da85ee7936ba501538b26f8a12ad71e1b08c"
+    },
+    "circuits/vendor/noir_bigcurve/Nargo.toml": {
+      "sha256": "b39d987fd6b74cf00ac1f65c672f00aba7ff04605c1b8960d1c7dcb31cf77df2"
+    },
+    "circuits/vendor/noir_bigcurve/src/benchmarks/bigcurve_benchmarks.nr": {
+      "sha256": "1f6acfeaa590a628d99aa55adbe60cd1849f9056f0f1e97e778045aa598190af"
+    },
+    "circuits/vendor/noir_bigcurve/src/benchmarks/mod.nr": {
+      "sha256": "b4c04efbc2f24f870b3e283721586ec40adf7fa1aa1946004d134beb63b318b4"
+    },
+    "circuits/vendor/noir_bigcurve/src/bigcurve.nr": {
+      "sha256": "f31c87383a6859550927a22bd63c2e6cd6ccd0f65d471a2cb50111780593bc88"
+    },
+    "circuits/vendor/noir_bigcurve/src/constants.nr": {
+      "sha256": "d502a9df0998b3e2f8052bc801297f91dd4d288377d36278fbb34c65369513f3"
+    },
+    "circuits/vendor/noir_bigcurve/src/curve_jac/mod.nr": {
+      "sha256": "adda87edf8c1a3c78094781d3cd777b7ad0cca7c146cc4e42f4c6ddb1e936a0f"
+    },
+    "circuits/vendor/noir_bigcurve/src/curve_jac/ops.nr": {
+      "sha256": "9f697c874d55ce67fe19dbfd791344dc1ac00e9e6cb54ee72974a8af134db7db"
+    },
+    "circuits/vendor/noir_bigcurve/src/curve_jac/point_table.nr": {
+      "sha256": "fad6c915d9bb16c9123445194cb3fbef5583961b334d808f01a65184ad1a6b50"
+    },
+    "circuits/vendor/noir_bigcurve/src/curve_jac/types.nr": {
+      "sha256": "f5256109571ee93bf49e2beafe33afc81b5dd05b6b9971068a3db79cbf60374d"
+    },
+    "circuits/vendor/noir_bigcurve/src/curves/bls12_377.nr": {
+      "sha256": "a54c8aaa13e610ca753959d889ba085f080e0b0460929777f01552f7f3b62fb2"
+    },
+    "circuits/vendor/noir_bigcurve/src/curves/bls12_381.nr": {
+      "sha256": "32e409c8c493abefca2cd4f6196b3a4d17b37dd117bd99b7b0489d4779f48286"
+    },
+    "circuits/vendor/noir_bigcurve/src/curves/bn254.nr": {
+      "sha256": "a5f8e52ef8052aa403c8f1a0e5d0145c51d8397ceb51b6fe299a025963b7c536"
+    },
+    "circuits/vendor/noir_bigcurve/src/curves/mnt4_753.nr": {
+      "sha256": "cb820faa053864fe62c4403f6c75dfae3733bbd1a44a6edfb4fcb6c1dc6d34ac"
+    },
+    "circuits/vendor/noir_bigcurve/src/curves/mnt6_753.nr": {
+      "sha256": "beee9608f57649e6b119b66d4af324fd033d7783ffaba648f92424cab64bc720"
+    },
+    "circuits/vendor/noir_bigcurve/src/curves/mod.nr": {
+      "sha256": "e654b154b2149b919ec21411356223213ab4c9701a20064fbb95195e0f229992"
+    },
+    "circuits/vendor/noir_bigcurve/src/curves/pallas.nr": {
+      "sha256": "588207f3d0ba2d3b164851a65c736cfc35581e143db689590108443bad8639f5"
+    },
+    "circuits/vendor/noir_bigcurve/src/curves/secp256k1.nr": {
+      "sha256": "c619a0533af87a3dbc7f538c2421ca79f09f499df762b433de844e224b28b31e"
+    },
+    "circuits/vendor/noir_bigcurve/src/curves/secp256r1.nr": {
+      "sha256": "ef309f53207347b5941e5ba0da2da1474a959b51e65394c1d2234b1134e207ea"
+    },
+    "circuits/vendor/noir_bigcurve/src/curves/secp384r1.nr": {
+      "sha256": "9eea3c0a6fa9290af658744ee997969b9649cdd7c485c01ddf939e9a242057ef"
+    },
+    "circuits/vendor/noir_bigcurve/src/curves/vesta.nr": {
+      "sha256": "301f4dc737e4d45d0e3ceb247090f89b95e7335b42ecf57f9eedd4678c31c70a"
+    },
+    "circuits/vendor/noir_bigcurve/src/data/bn254_transcript.nr": {
+      "sha256": "638c79f8731398d74f5d7ae189dc493942b1fba8221643945307a7af3cb117b5"
+    },
+    "circuits/vendor/noir_bigcurve/src/data/mod.nr": {
+      "sha256": "4219398ef6571206cf89b402a8715bfce69e80df2a511806e81136b9a9b76034"
+    },
+    "circuits/vendor/noir_bigcurve/src/glv.nr": {
+      "sha256": "8b72850ee7f64509858c8ed6d543b32868884af4f8ba3b35487b02ba0d923785"
+    },
+    "circuits/vendor/noir_bigcurve/src/glv_affine.nr": {
+      "sha256": "4798b445c4dc144d664b768891ceb4129544b2821b429b201bfaeaa7f282b3d6"
+    },
+    "circuits/vendor/noir_bigcurve/src/glv_batch.nr": {
+      "sha256": "73991e7a796d5891eb66757b22f81867a21a8f6fcf2c4a9ef68b7ff60189deea"
+    },
+    "circuits/vendor/noir_bigcurve/src/glv_constants.nr": {
+      "sha256": "84d9c14da1288673951ba36ce197e7d62c4298fcb63653b99919d7a2a8b346f9"
+    },
+    "circuits/vendor/noir_bigcurve/src/glv_msm.nr": {
+      "sha256": "81ccd40906bf29a5e7f53efd4686d91fe9c5fcc7e98757ced5b4c6cd5fb502ff"
+    },
+    "circuits/vendor/noir_bigcurve/src/glv_offset_table.nr": {
+      "sha256": "b532835baaf5c2ae1f933bc0fe49d79087beb32a0edd419676a340a9889540e8"
+    },
+    "circuits/vendor/noir_bigcurve/src/glv_offset_table_wide.nr": {
+      "sha256": "230f03bbdc9039c019d325953bd127182ecce73ba07488bca8886fa6d6485736"
+    },
+    "circuits/vendor/noir_bigcurve/src/glv_offsets.nr": {
+      "sha256": "cae0fb55042507d8bc87ebd84c28ec743e4fc0b239d8417b62184f2fe754b5d9"
+    },
+    "circuits/vendor/noir_bigcurve/src/glv_split.nr": {
+      "sha256": "ebf3b3bd29c4d455a84733d6eadb9716caafd4fed737b22435ac276e20f80e1e"
+    },
+    "circuits/vendor/noir_bigcurve/src/lib.nr": {
+      "sha256": "abc78e07f93186d5de5a7a5afed6cfd4d17e3209c6be6e4363fc4a2f3767a656"
+    },
+    "circuits/vendor/noir_bigcurve/src/ops/affine.nr": {
+      "sha256": "c63c9670257c2ab304d44f79d468c2f9a2a8c858cf16a95339c889c9fae1ac8b"
+    },
+    "circuits/vendor/noir_bigcurve/src/ops/mod.nr": {
+      "sha256": "516464cb8eb658d1e33cfbdc51b0c8c239c9db13775a6fbd036fe3f229c518f5"
+    },
+    "circuits/vendor/noir_bigcurve/src/ops/msm.nr": {
+      "sha256": "3f32792acb2fdc974b79db9e909e498312b98d1586b1c6c5e21b0e39521565d3"
+    },
+    "circuits/vendor/noir_bigcurve/src/ops/point_table.nr": {
+      "sha256": "eb82f9538b32b49ef139c700b4af628c4cc9c1a4e1ca49a47f2c8b0710b8ebce"
+    },
+    "circuits/vendor/noir_bigcurve/src/scalar_field.nr": {
+      "sha256": "9f418c1a8e3b3cd73833fa1e000dd1defbfa328b7ac9225516de550c5dc121df"
+    },
+    "circuits/vendor/noir_bigcurve/src/tests/bigcurve_test.nr": {
+      "sha256": "5dd2348628d8b4c58f4ef4c33ccb75e9e72508abdd6b1791c68cf2e7604a827a"
+    },
+    "circuits/vendor/noir_bigcurve/src/tests/mod.nr": {
+      "sha256": "2e731f04bfbf52598ef5ced3af453ae0caddb52f3e747ca233ba9ac81c485b60"
+    },
+    "circuits/vendor/noir_bigcurve/src/utils/derive_offset_generators.nr": {
+      "sha256": "26db154d234986bb85481d4566b3cb7fe6a3abd1d7c50ed93e3b051efd27bb4d"
+    },
+    "circuits/vendor/noir_bigcurve/src/utils/hash_to_curve.nr": {
+      "sha256": "b0521723183dd2f20bcceda8a1a1752ff1fb4f9097293def109aff8f49e48a66"
+    },
+    "circuits/vendor/noir_bigcurve/src/utils/mod.nr": {
+      "sha256": "7b01d18e546714d99c3e43cd8eff83f6590421bba610f7203fd94733d7b9bec0"
+    },
+    "circuits/vendor/poseidon/Nargo.toml": {
+      "sha256": "551d27ec7bf58e6e40896ee424210ac0f3724b29c05068cf34fef3ea8ca1b57a"
+    },
+    "circuits/vendor/poseidon/src/bench.nr": {
+      "sha256": "64f658d97495738f12585aa0fbba025bcf51e9bc7930da8ca94fe02d3c9b479a"
+    },
+    "circuits/vendor/poseidon/src/lib.nr": {
+      "sha256": "5d8b3eeccceb4ac36b66430d3678fc2e8d9e6ab5b759556244be1234882fdff9"
+    },
+    "circuits/vendor/poseidon/src/oracle_tests.nr": {
+      "sha256": "f5e7fb3f99cf446974836548e2cba9b34f1bf72434a4a3764dbc51fb998aa398"
+    },
+    "circuits/vendor/poseidon/src/poseidon/bn254/consts.nr": {
+      "sha256": "0e1ce6ec6ed2ebbab52739ab07a2ab7a9cfb9b479cb012527f5e08447677dfd2"
+    },
+    "circuits/vendor/poseidon/src/poseidon/bn254/perm.nr": {
+      "sha256": "1daf55657af0418deb717b74cd45a1a4e9ac9d59678335cf0e677ed8a682be23"
+    },
+    "circuits/vendor/poseidon/src/poseidon/bn254.nr": {
+      "sha256": "4800b851b4b0e2c71cd6456efb021be865e4fde040c6e63797b6f157c042653a"
+    },
+    "circuits/vendor/poseidon/src/poseidon/mod.nr": {
+      "sha256": "d0b044a17c0d7c26470137c17b7a43c172051da8ea74e56797323f3cc07a5a84"
+    },
+    "circuits/vendor/poseidon/src/poseidon2.nr": {
+      "sha256": "44f3a3d1abe7d5fa2da5c0339e52018195d55f295c320e530d355f9cc62159d8"
+    },
+    "circuits/vendor/poseidon/src/tests.nr": {
+      "sha256": "6b24a2c10534708e4f74a80f9eefbe2ff869f4709f16cddb4c686995b4c38172"
+    },
+    "circuits/private-lineage-relations/src/schedule.nr": {
+      "sha256": "d0de514a6aa32c0b2689f87bb773cb4000c1851899e5f689f027b982ae9f3b73"
+    }
+  },
+  "roles": {
+    "deposit_authorization": {
+      "artifact_sha256": "abf6a687272487ad4102017f3fcac602fc7391363dc4eeee84229b0d3c1e2c28",
+      "vk_sha256": "1328d95622b0854a74e88418b73e023e9f48502777e1f668b3730b4377bb62ba",
+      "metadata_sha256": "4d4fe956694d41be8ac9c13c7fdd7b514c1cb4f07cc618cf5405a3bd0d2335ae",
+      "recursive_hash": "239496e869ac5f5b96bd2aa84c2fd4f9ca6a40e848634868bf05dd29151633fc",
+      "native": false,
+      "public_fields": 48,
+      "package": "private-deposit-authorize",
+      "public_bytes": 1466,
+      "fused_artifact_sha256": "abf6a687272487ad4102017f3fcac602fc7391363dc4eeee84229b0d3c1e2c28"
+    },
+    "sender_from_origin": {
+      "artifact_sha256": "12f0f45b13473f05e9c4908bb97b1f027dc0ce741bf6e2514c355eb4d86b5fdc",
+      "vk_sha256": "b4da8fc86cda18d6c79ff5a4ce928bd4f8b6d7b033f2d0ba37ac317d8afc47e9",
+      "metadata_sha256": "c5b8069648c72c8ce15611e8d7aa3682e451a20cfbd282d64551c10b13f8378a",
+      "recursive_hash": "2ba4ea3d25f900d3df3b251c4a65cf5af96cf9515330bf57e686f8236bcf5086",
+      "native": true,
+      "public_fields": 23,
+      "package": "private-sender-from-origin",
+      "public_bytes": 685,
+      "fused_artifact_sha256": "e21f1c7aa15797942992ae3a695ce64f5dcc4e0307b01aaf59f1196878f5a107"
+    },
+    "sender_from_transfer": {
+      "artifact_sha256": "6ef07b5c7a193979a8a0120f810a604c4be6f78d1bd4ea2d6341db40b46e7fc2",
+      "vk_sha256": "af1471387951bf43a2fe70e7de08d65d42e1e041d995a60115489abfa0860f94",
+      "metadata_sha256": "402995a3a6eef6d5ccaedc60681368b818c335cc42381eaba427c156c3dc23e2",
+      "recursive_hash": "0cd893ce83de000f0382cbe9b62135adfa0e8ccc31c86ed96ec78afd992fa53b",
+      "native": true,
+      "public_fields": 23,
+      "package": "private-sender-from-transfer",
+      "public_bytes": 685,
+      "fused_artifact_sha256": "3b0531d7d87f4821a564807fc96389bd67063ee392ec3cbdaa60425e1874a6a1"
+    },
+    "receiver_authorization": {
+      "artifact_sha256": "89075dc1c7926d601d1aa18b109c5dfb2b38aba9016024a806b3dde51f9ce201",
+      "vk_sha256": "48985996689cf13e524ff9c92e2a7f3804a77d6a07921ae14d2a38bd09633e1d",
+      "metadata_sha256": "df234b2db93949e72739d4b18b657a3d3b2ed0c76930b9082f2598bf5a8447e9",
+      "recursive_hash": "17efc7e6ad0b40c76ead127baa01ba84d83feb78b549a749110088ac3c5f5ae4",
+      "native": true,
+      "public_fields": 29,
+      "package": "private-receiver-authorize",
+      "public_bytes": 877,
+      "fused_artifact_sha256": "ef50a4c7d8beb36a9f92200bf48a3895768553749bfaf6cb6f8b85a55bfc6e96"
+    },
+    "exit_from_origin": {
+      "artifact_sha256": "63ce076d12a478da56c3e5ef3498eae632dfbbe88c14c609081bb4fbb676bd6b",
+      "vk_sha256": "3f551e86d80db73e1423978768be5e8bb0b03002a7a953bcf711c2da18f25afa",
+      "metadata_sha256": "51840e6a501b4e14ab457e587350afbeb1f7cba446cd0fc79862b0b690640330",
+      "recursive_hash": "246b83f0366d6794d698dd69774c371130ed4b8f5e664e81f239951878d79cc3",
+      "native": true,
+      "public_fields": 29,
+      "package": "private-exit-from-origin",
+      "public_bytes": 877,
+      "fused_artifact_sha256": "9b500c2d0dd55da2641d298f4f47e7b272a42e241193fddcc314707491bd3179"
+    },
+    "exit_from_transfer": {
+      "artifact_sha256": "8243f4d38189dadd1b1d87392f8ce43a2882d75014ecd23a6bec50a78dc4d888",
+      "vk_sha256": "2bbd09bb2887f4a8e7d6b4d5da98fae5ec252cdaa5b385dc855e4cd709b12040",
+      "metadata_sha256": "876b69079524c27a7cf02f2a667493191ec871a7669bb69927853dc9fab13c0b",
+      "recursive_hash": "1f5a86a3fd9431356e1971ba0197343c3dc140b853d8a981c49c229fee8f633b",
+      "native": false,
+      "public_fields": 29,
+      "package": "private-exit-from-transfer",
+      "public_bytes": 877,
+      "fused_artifact_sha256": "8243f4d38189dadd1b1d87392f8ce43a2882d75014ecd23a6bec50a78dc4d888"
+    }
+  },
+  "tools": {
+    "prover_sha256": "a29d42cb024c0e1008f03df8a3cccdde6e2bc8b9c63dc2ee73345525657016cf",
+    "verifier_sha256": "8520f37ac584d546d53076f31b0c1d56ea5de7d62bf790d662651775dce3b87e",
+    "executor_sha256": "7ec8431aeaaaeff806b0de58e893e83ca1388de4057c3532c6006781cf907027",
+    "helper_sha256": "c078c6fbcc1b15e35107cae5d20ad4242230ddce48ac44fa2d43d7d17071a3d0"
+  },
+  "helper_sha256": {
+    "bank.json": "60b8a2215854fe4e402dc5c0bfd2198ea87e110d2415b477e5236db0e5677435"
+  },
+  "donor_sha256": {
+    "batch_hint.nr": "07955f6b6521e6f79429cc795f24fbf396da7e74a140d967ff8fdc0c436c3bfd",
+    "glv_batch.nr": "b4248d794e10d3a670221676bcf2434a5f7e795ff5d00c239ef58256b9d27e35",
+    "glv_msm.nr": "369a680fd44cddecc5a18c71ee8fb23aca1ec59057821acf407a89f05d8cf9c0"
+  }
+}

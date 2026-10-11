@@ -1,0 +1,33 @@
+[package]
+name = "zark-wallet"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "MIT"
+
+[lib]
+name = "zark_wallet"
+path = "src/lib.rs"
+
+[workspace]
+members = ["crates/protocol", "crates/signer"]
+resolver = "3"
+
+[dependencies]
+anyhow = "1"
+base64 = "0.23"
+bitcoin = { version = "0.32", features = ["serde", "rand-std"] }
+k256 = { version = "0.13", features = ["arithmetic", "schnorr"] }
+hex = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+zeroize = { version = "1", features = ["derive"] }
+zark-protocol = { path = "crates/protocol" }
+clap = { version = "4", features = ["derive"] }
+libc = "0.2"
+toml = "0.8"
+ring = "0.17.14"
+
+[dev-dependencies]
+zark-signer = { path = "crates/signer" }
+rcgen = "0.14"

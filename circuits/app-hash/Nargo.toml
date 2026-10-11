@@ -1,0 +1,5 @@
+[package]
+name="app_hash"
+type="lib"
+authors=[]
+compiler_version=">=1.0.0"

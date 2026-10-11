@@ -1,0 +1,14 @@
+{
+  "darwin-arm64": {
+    "nargo_sha256": "4e6e7cebf0c96a59b1993f6ff63e4f473be79a311f85009b2408854fd3e02a35",
+    "verifier_sha256": "8520f37ac584d546d53076f31b0c1d56ea5de7d62bf790d662651775dce3b87e"
+  },
+  "linux-x64": {
+    "nargo_sha256": "b22dbfac734182440ca92647c8b97a5bc59e099bf5f0602782dbabdca1d98325",
+    "verifier_sha256": "fc9279e32471e036827c911ec9f8106ade987aec91d3e9a55cf4d33ebfb6f2cf"
+  },
+  "linux-arm64": {
+    "nargo_sha256": "4521c6afb49681f3c656abcce73fedbb0791e9541554563a7c35c719046f4f4d",
+    "verifier_sha256": "779fc77ae0beedeca990699d9a4bf7b95fc9abececd0316615c8e0d251cda6cb"
+  }
+}

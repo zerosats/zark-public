@@ -1,0 +1,12 @@
+[package]
+name = "private_deposit_relations"
+type = "lib"
+authors = [""]
+compiler_version = ">=1.0.0"
+
+[dependencies]
+recovery = { path = "../private-recovery-relations" }
+bitcoin_relations = { path = "../relations" }
+bigcurve = { path = "../vendor/noir_bigcurve" }
+bignum = { path = "../vendor/noir-bignum" }
+fixed_generator = { path = "../fixed-generator" }

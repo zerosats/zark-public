@@ -1,0 +1,325 @@
+diff --git a/barretenberg/cpp/src/barretenberg/dsl/CMakeLists.txt b/barretenberg/cpp/src/barretenberg/dsl/CMakeLists.txt
+index 9141bc2..7963bc4 100644
+--- a/barretenberg/cpp/src/barretenberg/dsl/CMakeLists.txt
++++ b/barretenberg/cpp/src/barretenberg/dsl/CMakeLists.txt
+@@ -23,3 +23,10 @@ endif()
+ if(FUZZING)
+     target_link_libraries(dsl_acir_dsl_fuzzer PRIVATE vm2_stub)
+ endif()
++
++# Explicitly opt in to the pinned Zark leaf-only recursion experiment.
++option(ZARK_DEPOSIT_AGGREGATION_EXPERIMENT "Specialize recursion for the pinned Zark deposit VK" OFF)
++if(ZARK_DEPOSIT_AGGREGATION_EXPERIMENT)
++    set_property(SOURCE acir_format/honk_recursion_constraint.cpp APPEND PROPERTY
++        COMPILE_DEFINITIONS ZARK_DEPOSIT_AGGREGATION_EXPERIMENT=1)
++endif()
+diff --git a/barretenberg/cpp/src/barretenberg/dsl/acir_format/honk_recursion_constraint.cpp b/barretenberg/cpp/src/barretenberg/dsl/acir_format/honk_recursion_constraint.cpp
+index b746385..822bf8b 100644
+--- a/barretenberg/cpp/src/barretenberg/dsl/acir_format/honk_recursion_constraint.cpp
++++ b/barretenberg/cpp/src/barretenberg/dsl/acir_format/honk_recursion_constraint.cpp
+@@ -19,6 +19,10 @@
+ #include "barretenberg/ultra_honk/ultra_verifier.hpp"
+ #include "recursion_constraint.hpp"
+ 
++#ifdef ZARK_DEPOSIT_AGGREGATION_EXPERIMENT
++#include "barretenberg/stdlib/honk_verifier/zark_deposit_verifier.hpp"
++#endif
++
+ #include <cstddef>
+ 
+ namespace acir_format {
+@@ -121,7 +125,19 @@ HonkRecursionConstraintOutput<typename Flavor::CircuitBuilder> create_honk_recur
+     auto vkey = std::make_shared<RecursiveVerificationKey>(vk_fields);
+     auto vk_and_hash = std::make_shared<RecursiveVKAndHash>(vkey, vk_hash);
+     RecursiveVerifier verifier(vk_and_hash);
+-    UltraRecursiveVerifierOutput<Builder> verifier_output = verifier.verify_proof(proof_fields);
++    UltraRecursiveVerifierOutput<Builder> verifier_output = [&]() {
++#ifdef ZARK_DEPOSIT_AGGREGATION_EXPERIMENT
++        if constexpr (std::is_same_v<RecursiveVerifier, zark::Verifier>) {
++            // Static ACIR shape selects the implementation. The specialization
++            // constrains the actual VK hash to the pinned deposit role.
++            if (input.proof_type == HONK_ZK && input.public_inputs.size() == zark::DEPOSIT_PUBLIC_INPUTS &&
++                input.predicate.is_constant && input.predicate.value == bb::fr(1)) {
++                return zark::verify_deposit(verifier, proof_fields);
++            }
++        }
++#endif
++        return verifier.verify_proof(proof_fields);
++    }();
+ 
+ #ifndef NDEBUG
+     native_verification_debug<Flavor, IO>(vkey, vk_hash.get_value(), proof_fields);
+diff --git a/barretenberg/cpp/src/barretenberg/stdlib/honk_verifier/zark_deposit_verifier.hpp b/barretenberg/cpp/src/barretenberg/stdlib/honk_verifier/zark_deposit_verifier.hpp
+new file mode 100644
+index 0000000..90886f3
+--- /dev/null
++++ b/barretenberg/cpp/src/barretenberg/stdlib/honk_verifier/zark_deposit_verifier.hpp
+@@ -0,0 +1,50 @@
++#pragma once
++#include "barretenberg/ultra_honk/ultra_verifier.hpp"
++
++// Experimental, pinned Zark v10 leaf specialization. No native verifier or
++// proof format changes. The ACIR caller is opt-in at build time, never selected
++// by witness values. Requalify the outer VKs before admitting this backend.
++namespace bb::stdlib::recursion::honk::zark {
++using Builder = UltraCircuitBuilder;
++using Flavor = UltraZKRecursiveFlavor_<Builder>;
++using Verifier = UltraVerifier_<Flavor, DefaultIO<Builder>>;
++using FF = Flavor::FF;
++constexpr size_t DEPOSIT_PUBLIC_INPUTS = 48;
++constexpr size_t DEFAULT_ACCUMULATOR_LIMBS = DefaultIO<Builder>::PUBLIC_INPUTS_SIZE;
++static_assert(DEFAULT_ACCUMULATOR_LIMBS == 8);
++
++inline bb::fr deposit_vk_hash()
++{
++    // Zark source-lock.json / deposit_authorization; re-pin after circuit changes.
++    return bb::fr("0x239496e869ac5f5b96bd2aa84c2fd4f9ca6a40e848634868bf05dd29151633fc");
++}
++
++inline void constrain_default_accumulator(const std::vector<FF>& public_inputs)
++{
++    BB_ASSERT_EQ(public_inputs.size(), DEPOSIT_PUBLIC_INPUTS + DEFAULT_ACCUMULATOR_LIMBS,
++                 "Zark deposit public input shape");
++    // These are the actual public inputs consumed by Oink's public-input delta.
++    // Assert every encoded limb, not an unconstrained native infinity test.
++    for (size_t i = DEPOSIT_PUBLIC_INPUTS; i < public_inputs.size(); ++i) {
++        public_inputs[i].assert_is_zero("Zark deposit default accumulator");
++    }
++}
++
++inline Verifier::Output verify_deposit(Verifier& verifier, const Verifier::Proof& proof)
++{
++    // Oink independently hashes all actual VK fields and constrains equality
++    // with this hash. Binding it to a literal admits only the pinned deposit
++    // circuit; a same-shaped recursive proof is not an alternate role.
++    verifier.get_verifier_instance()->vk_and_hash->hash.assert_equal(
++        FF(deposit_vk_hash()), "Zark deposit verification key");
++    auto reduced = verifier.reduce_to_pairing_check(proof);
++    constrain_default_accumulator(verifier.get_public_inputs());
++
++    // e(infinity, Q) = 1: the constrained default contributes no obligation.
++    // Keep the new proof's pairing points and tag for outer public output and
++    // final native verification. Never return the default accumulator itself.
++    Verifier::Output output;
++    output.points_accumulator = std::move(reduced.pairing_points);
++    return output;
++}
++} // namespace bb::stdlib::recursion::honk::zark
+diff --git a/barretenberg/cpp/src/barretenberg/stdlib/honk_verifier/zark_deposit_verifier.test.cpp b/barretenberg/cpp/src/barretenberg/stdlib/honk_verifier/zark_deposit_verifier.test.cpp
+new file mode 100644
+index 0000000..b13051e
+--- /dev/null
++++ b/barretenberg/cpp/src/barretenberg/stdlib/honk_verifier/zark_deposit_verifier.test.cpp
+@@ -0,0 +1,212 @@
++#include "zark_deposit_verifier.hpp"
++#include "barretenberg/circuit_checker/circuit_checker.hpp"
++#include "barretenberg/common/test.hpp"
++#include "barretenberg/flavor/test_utils/proof_structures.hpp"
++#include "barretenberg/ultra_honk/ultra_prover.hpp"
++#include <chrono>
++#include <filesystem>
++#include <fstream>
++
++namespace bb::stdlib::recursion::honk::zark {
++namespace {
++using Native = UltraZKFlavor;
++using NativeKey = Native::VerificationKey;
++using NativeVerifier = UltraVerifier_<Native, bb::DefaultIO>;
++using Clock = std::chrono::steady_clock;
++
++std::vector<bb::fr> read_fields(const std::filesystem::path& path)
++{
++    std::ifstream stream(path, std::ios::binary);
++    BB_ASSERT(stream.is_open(), "Missing synthetic fixture: " + path.string());
++    std::array<uint8_t, 32> bytes{};
++    std::vector<bb::fr> values;
++    while (stream.read(reinterpret_cast<char*>(bytes.data()), 32)) {
++        values.push_back(from_buffer<bb::fr>(bytes));
++    }
++    BB_ASSERT(stream.eof() && stream.gcount() == 0, "Malformed field file");
++    return values;
++}
++
++void write_fields(const std::filesystem::path& path, const std::vector<bb::fr>& values)
++{
++    std::ofstream stream(path, std::ios::binary);
++    BB_ASSERT(stream.is_open(), "Cannot write synthetic proof");
++    for (const auto& value : values) {
++        auto bytes = to_buffer(value);
++        stream.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
++    }
++    BB_ASSERT(stream.good(), "Cannot finish synthetic proof");
++}
++
++double seconds(Clock::time_point start)
++{
++    return std::chrono::duration<double>(Clock::now() - start).count();
++}
++
++class ZarkDeposit : public testing::Test {
++  protected:
++    static inline std::shared_ptr<NativeKey> key;
++    static inline HonkProof proof;
++    static inline std::filesystem::path output_dir;
++
++    static void SetUpTestSuite()
++    {
++        const char* fixture_path = std::getenv("ZARK_DEPOSIT_FIXTURE");
++        BB_ASSERT(fixture_path != nullptr, "Set ZARK_DEPOSIT_FIXTURE to isolated synthetic work directory");
++        const std::filesystem::path fixture(fixture_path);
++        output_dir = fixture / "recursive-probes";
++        std::filesystem::create_directories(output_dir);
++        bb::srs::init_bn254_file_crs_factory(bb::srs::bb_crs_path());
++        key = std::make_shared<NativeKey>();
++        key->from_field_elements(read_fields(fixture / "deposit-key/vk"));
++        ASSERT_EQ(key->hash(), deposit_vk_hash());
++        proof = read_fields(fixture / "deposit-proof/public_inputs");
++        auto body = read_fields(fixture / "deposit-proof/proof");
++        proof.insert(proof.end(), body.begin(), body.end());
++        NativeVerifier verifier(std::make_shared<Native::VKAndHash>(key));
++        ASSERT_TRUE(verifier.verify_proof(proof).result);
++    }
++
++    static Verifier::Output verify(Builder& builder, const HonkProof& input, bool specialized)
++    {
++        auto recursive_key = std::make_shared<Flavor::VKAndHash>(builder, key);
++        Verifier verifier(recursive_key);
++        bb::stdlib::Proof<Builder> recursive_proof(builder, input);
++        if (specialized) {
++            return verify_deposit(verifier, recursive_proof);
++        }
++        // Same role pin in both circuits: isolate default-aggregation cost.
++        recursive_key->hash.assert_equal(FF(deposit_vk_hash()), "Zark deposit verification key");
++        return verifier.verify_proof(recursive_proof);
++    }
++
++    static void prove_variant(bool specialized)
++    {
++        const std::string label = specialized ? "specialized" : "stock";
++        auto start = Clock::now();
++        Builder builder;
++        auto output = verify(builder, proof, specialized);
++        const double construction = seconds(start);
++        ASSERT_FALSE(builder.failed()) << builder.err();
++        ASSERT_TRUE(CircuitChecker::check(builder));
++        ASSERT_TRUE(output.points_accumulator.check());
++        DefaultIO<Builder> io;
++        io.pairing_inputs = output.points_accumulator;
++        io.set_public();
++        start = Clock::now();
++        auto instance = std::make_shared<ProverInstance_<Native>>(builder);
++        auto outer_key = std::make_shared<NativeKey>(instance->get_precomputed());
++        UltraProver_<Native> prover(instance, outer_key);
++        auto outer_proof = prover.construct_proof();
++        const double proving = seconds(start);
++        NativeVerifier verifier(std::make_shared<Native::VKAndHash>(outer_key));
++        ASSERT_TRUE(verifier.verify_proof(outer_proof).result);
++        const auto dir = output_dir / label;
++        std::filesystem::create_directories(dir);
++        write_fields(dir / "proof", outer_proof);
++        write_fields(dir / "public_inputs", {}); // only eight carried pairing limbs, kept inside proof
++        write_fields(dir / "vk", outer_key->to_field_elements());
++        std::ofstream metrics(dir / "metrics.json");
++        metrics << "{\"variant\":\"" << label << "\",\"rows\":" << builder.get_finalized_total_circuit_size()
++                << ",\"domain\":" << instance->dyadic_size() << ",\"construction_seconds\":" << construction
++                << ",\"setup_and_prove_seconds\":" << proving << "}\n";
++        info("ZARK_RECURSION ", label, " rows=", builder.get_finalized_total_circuit_size(),
++             " construction=", construction, " setup_and_prove=", proving);
++    }
++};
++
++TEST_F(ZarkDeposit, StockProof) { prove_variant(false); }
++TEST_F(ZarkDeposit, SpecializedProof) { prove_variant(true); }
++
++TEST_F(ZarkDeposit, DefaultLimbsAreConstraints)
++{
++    Builder builder;
++    std::vector<FF> inputs(DEPOSIT_PUBLIC_INPUTS, FF(17));
++    for (size_t i = 0; i < DEFAULT_ACCUMULATOR_LIMBS; ++i) {
++        inputs.push_back(FF::from_witness(&builder, bb::fr(0)));
++    }
++    constrain_default_accumulator(inputs);
++    ASSERT_TRUE(CircuitChecker::check(builder));
++    // Mutate assigned witnesses after honest generation: exercise constraints.
++    for (size_t i = DEPOSIT_PUBLIC_INPUTS; i < inputs.size(); ++i) {
++        auto index = builder.real_variable_index[inputs[i].get_witness_index()];
++        // Test-only mutation of the non-const builder, bypassing honest witness generation.
++        auto& assignments = const_cast<std::vector<bb::fr>&>(builder.get_variables());
++        assignments[index] = 1;
++        EXPECT_FALSE(CircuitChecker::check(builder)) << "limb " << i;
++        assignments[index] = 0;
++        EXPECT_TRUE(CircuitChecker::check(builder));
++    }
++}
++
++TEST_F(ZarkDeposit, RejectsDifferentRoleKey)
++{
++    // A genuine small nonrecursive proof has the same public-input shape and
++    // a default accumulator, but its independently valid key is not deposit.
++    Builder inner;
++    for (size_t i = 0; i < DEPOSIT_PUBLIC_INPUTS; ++i) {
++        auto index = inner.add_public_variable(bb::fr(i + 1));
++        inner.fix_witness(index, bb::fr(i + 1));
++    }
++    DefaultIO<Builder>::add_default(inner);
++    auto instance = std::make_shared<ProverInstance_<Native>>(inner);
++    auto different_key = std::make_shared<NativeKey>(instance->get_precomputed());
++    UltraProver_<Native> prover(instance, different_key);
++    auto different_proof = prover.construct_proof();
++    NativeVerifier native(std::make_shared<Native::VKAndHash>(different_key));
++    ASSERT_TRUE(native.verify_proof(different_proof).result);
++    Builder builder;
++    auto recursive_key = std::make_shared<Flavor::VKAndHash>(builder, different_key);
++    Verifier verifier(recursive_key);
++    auto output = verify_deposit(verifier, bb::stdlib::Proof<Builder>(builder, different_proof));
++    EXPECT_TRUE(builder.failed());
++    EXPECT_EQ(builder.err(), "Zark deposit verification key");
++    EXPECT_FALSE(CircuitChecker::check(builder));
++    (void)output;
++
++    // Spoof only the supplied expected hash. Oink must bind it to the actual
++    // different key fields even though the deposit-role pin now passes.
++    Builder spoofed;
++    auto spoofed_key = std::make_shared<Flavor::VKAndHash>(spoofed, different_key);
++    spoofed_key->hash = FF::from_witness(&spoofed, deposit_vk_hash());
++    Verifier spoofed_verifier(spoofed_key);
++    auto spoofed_output = verify_deposit(spoofed_verifier, bb::stdlib::Proof<Builder>(spoofed, different_proof));
++    EXPECT_TRUE(spoofed.failed());
++    EXPECT_NE(spoofed.err(), "Zark deposit verification key");
++    EXPECT_FALSE(CircuitChecker::check(spoofed));
++    (void)spoofed_output;
++}
++
++TEST_F(ZarkDeposit, PreservesFinalPairingObligation)
++{
++    StructuredProof<Native> parsed;
++    auto tampered = proof;
++    parsed.deserialize(tampered, key->num_public_inputs, Native::VIRTUAL_LOG_N);
++    parsed.kzg_w_comm = parsed.kzg_w_comm * bb::fr(2);
++    parsed.serialize(tampered, Native::VIRTUAL_LOG_N);
++    Builder builder;
++    auto output = verify(builder, tampered, true);
++    EXPECT_FALSE(builder.failed()) << builder.err();
++    EXPECT_TRUE(CircuitChecker::check(builder));
++    EXPECT_FALSE(output.points_accumulator.check());
++
++    // The recursive constraints alone hold; the outer native verifier must
++    // reject the retained invalid pairing obligation. Emit it for a separate
++    // unmodified verifier process as well as checking the in-process result.
++    DefaultIO<Builder> io;
++    io.pairing_inputs = output.points_accumulator;
++    io.set_public();
++    auto instance = std::make_shared<ProverInstance_<Native>>(builder);
++    auto outer_key = std::make_shared<NativeKey>(instance->get_precomputed());
++    UltraProver_<Native> prover(instance, outer_key);
++    auto outer_proof = prover.construct_proof();
++    NativeVerifier native(std::make_shared<Native::VKAndHash>(outer_key));
++    EXPECT_FALSE(native.verify_proof(outer_proof).result);
++    const auto dir = output_dir / "bad-pairing";
++    std::filesystem::create_directories(dir);
++    write_fields(dir / "proof", outer_proof);
++    write_fields(dir / "public_inputs", {});
++    write_fields(dir / "vk", outer_key->to_field_elements());
++}
++} // namespace
++} // namespace bb::stdlib::recursion::honk::zark

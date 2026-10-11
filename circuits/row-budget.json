@@ -1,0 +1,40 @@
+{
+  "toolchain": {
+    "noir_version": "1.0.0-beta.25+75061fab15986eedee4e7d9104ff87dd9fa4ca10",
+    "nargo_sha256": "4e6e7cebf0c96a59b1993f6ff63e4f473be79a311f85009b2408854fd3e02a35",
+    "bb_version": "5.2.0",
+    "bb_sha256": "8520f37ac584d546d53076f31b0c1d56ea5de7d62bf790d662651775dce3b87e",
+    "target": "noir-recursive"
+  },
+  "policy": {
+    "tolerance_fraction": 0.0025,
+    "proving_microseconds_per_row": 8
+  },
+  "baseline_reason": "Bounded byte nonzero checks, unique role pairs and exact prior-proof authorization reuse, retaining batched origin verification and deposit key reuse; artifacts pinned in runtime/fast-prover/source-lock.json",
+  "roles": {
+    "deposit_authorization": {
+      "package": "private-deposit-authorize",
+      "circuit_size": 360713
+    },
+    "sender_from_origin": {
+      "package": "private-sender-from-origin",
+      "circuit_size": 947307
+    },
+    "sender_from_transfer": {
+      "package": "private-sender-from-transfer",
+      "circuit_size": 874160
+    },
+    "receiver_authorization": {
+      "package": "private-receiver-authorize",
+      "circuit_size": 972119
+    },
+    "exit_from_origin": {
+      "package": "private-exit-from-origin",
+      "circuit_size": 1109085
+    },
+    "exit_from_transfer": {
+      "package": "private-exit-from-transfer",
+      "circuit_size": 1029801
+    }
+  }
+}

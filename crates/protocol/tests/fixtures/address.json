@@ -1,0 +1,232 @@
+{
+  "format_version": 1,
+  "source": "address_vectors.py; public test keys only",
+  "valid": [
+    {
+      "name": "tzark-even-envelope",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "envelope_key": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "claim_key": "02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "address": "tzark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w28t6jhg"
+    },
+    {
+      "name": "tzark-odd-envelope",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "envelope_key": "0379be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "claim_key": "02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",
+      "address": "tzark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqx7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtunpzspjfvvxyzfx38ct7ya2g5m2vwggkpklxdsscqlzyauuqm0jql4tj5"
+    },
+    {
+      "name": "zark-even-envelope",
+      "hrp": "zark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "envelope_key": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "claim_key": "02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "address": "zark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w29y72e5"
+    },
+    {
+      "name": "zark-odd-envelope",
+      "hrp": "zark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "envelope_key": "0379be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "claim_key": "02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",
+      "address": "zark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqx7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtunpzspjfvvxyzfx38ct7ya2g5m2vwggkpklxdsscqlzyauuqm0jzs3nug"
+    }
+  ],
+  "invalid": [
+    {
+      "name": "all-uppercase",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "TZARK1PQYPQXPQ9QCRSSZG2PVXQ6RS0ZQG3YYC5Z5TPWXQERGD3C8G7RUSQY7D7VEL0NH9M4326QC54E6RSKPCZN07DKTWW9RV4NU5PTVT0S9UCQTRQGLU5G8KH6MFSG4QXA9WQ0NV9CAUWFWXW70984WKQNW2UWZ0W28T6JHG"
+    },
+    {
+      "name": "mixed-case",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "Tzark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w28t6jhg"
+    },
+    {
+      "name": "leading-space",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": " tzark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w28t6jhg"
+    },
+    {
+      "name": "trailing-newline",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "tzark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w28t6jhg\n"
+    },
+    {
+      "name": "embedded-nul",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "tzark1pqypqxpq9qcrss\u0000g2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w28t6jhg"
+    },
+    {
+      "name": "unicode-lookalike",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "\uff54zark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w28t6jhg"
+    },
+    {
+      "name": "wrong-checksum",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "tzark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w28t6jhq"
+    },
+    {
+      "name": "bech32-instead-of-bech32m",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "tzark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w2jh27j2"
+    },
+    {
+      "name": "wrong-hrp-valid-checksum",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "uzark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w2y2sgkr"
+    },
+    {
+      "name": "mainnet-in-test-context",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "zark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w29y72e5"
+    },
+    {
+      "name": "test-in-mainnet-context",
+      "hrp": "zark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "tzark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w28t6jhg"
+    },
+    {
+      "name": "wrong-deployment",
+      "hrp": "tzark",
+      "deployment": "2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a",
+      "address": "tzark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w28t6jhg"
+    },
+    {
+      "name": "zero-deployment",
+      "hrp": "tzark",
+      "deployment": "0000000000000000000000000000000000000000000000000000000000000000",
+      "address": "tzark1pqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w2cqe7zk"
+    },
+    {
+      "name": "format-zero",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "tzark1qqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w2kc5nff"
+    },
+    {
+      "name": "unknown-format-two",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "tzark1zqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w2ahg3ut"
+    },
+    {
+      "name": "unknown-format-31",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "tzark1lqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w24v2vtk"
+    },
+    {
+      "name": "nonzero-padding-valid-checksum",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "tzark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0wt6aw826"
+    },
+    {
+      "name": "extra-zero-symbol-valid-checksum",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "tzark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w2qyj89ga"
+    },
+    {
+      "name": "missing-symbol-valid-checksum",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "tzark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0wqytalm"
+    },
+    {
+      "name": "extra-payload-byte",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "tzark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w2qqnu9vnz"
+    },
+    {
+      "name": "truncated-payload",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "tzark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0qzlv5a3"
+    },
+    {
+      "name": "invalid-envelope-prefix",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "tzark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqg7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w2lh6tqr"
+    },
+    {
+      "name": "identity-encoding",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "tzark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w2jrjjmu"
+    },
+    {
+      "name": "envelope-x-equals-p",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "tzark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusq9llllllllllllllllllllllllllllllllllllllllllllmllllp0qtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w2pwq4q6"
+    },
+    {
+      "name": "envelope-off-curve",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "tzark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w26sjzkz"
+    },
+    {
+      "name": "claim-x-equals-p",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "tzark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtllllllllllllllllllllllllllllllllllllllllllllhlll7z78r9830"
+    },
+    {
+      "name": "claim-off-curve",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "tzark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqgqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq9uww92"
+    },
+    {
+      "name": "odd-claim-key",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "tzark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucq0rqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w2a50d5l"
+    },
+    {
+      "name": "same-key-roles",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "tzark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqfumuen7l8wthtz45p3ftn58pvrs9xlumvkuu2xet8egzkcklqtesp8g5g9"
+    },
+    {
+      "name": "negated-key-roles",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "tzark1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusq83sy072yrmtad5cy2srwjhq8ekzuw78yhr808jn6htqfh9w8p8h9qtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w2uph678"
+    },
+    {
+      "name": "bitcoin-payout-hrp",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "tb1pqypqxpq9qcrsszg2pvxq6rs0zqg3yyc5z5tpwxqergd3c8g7rusqy7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqtrqglu5g8kh6mfsg4qxa9wq0nv9cauwfwxw70984wkqnw2uwz0w2z0j7tv"
+    },
+    {
+      "name": "bip350-segwit-not-zark",
+      "hrp": "tzark",
+      "deployment": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "address": "bc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqzk5jj0"
+    }
+  ]
+}

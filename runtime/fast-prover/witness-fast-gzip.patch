@@ -1,0 +1,11 @@
+--- a/acvm-repo/acir/src/native_types/witness_stack.rs
++++ b/acvm-repo/acir/src/native_types/witness_stack.rs
+@@ -92,7 +92,7 @@
+         let buf = serialization::serialize_with_format(self, format)
+             .map_err(|e| WitnessStackError(SerializationError::Serialize(e)))?;
+ 
+-        let mut deflater = GzEncoder::new(buf.as_slice(), Compression::best());
++        let mut deflater = GzEncoder::new(buf.as_slice(), Compression::fast());
+         let mut buf = Vec::new();
+         deflater
+             .read_to_end(&mut buf)

@@ -1,0 +1,38 @@
+name: Check
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-14, ubuntu-22.04, ubuntu-22.04-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Linux desktop libraries
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev pkg-config
+      - name: Pinned Rust
+        run: rustup toolchain install 1.95.0 --profile minimal --component clippy,rustfmt
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo test --workspace --all-targets --locked
+      - run: sh apps/desktop/test.sh
+      - name: Bundled Node runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.5'
+      - name: Desktop tests on bundled Node
+        run: sh apps/desktop/test.sh
+      - run: python3 -m unittest discover -s scripts -p 'test_*.py'
+      - run: python3 -m unittest discover -s services -p 'test_*.py'
+      - run: cargo test --locked --manifest-path apps/desktop-tauri/Cargo.toml
+      - run: cargo build --release --locked --manifest-path apps/desktop-tauri/Cargo.toml

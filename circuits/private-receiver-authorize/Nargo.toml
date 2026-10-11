@@ -1,0 +1,12 @@
+[package]
+name = "private_receiver_authorize"
+type = "bin"
+authors = [""]
+compiler_version = ">=1.0.0"
+[dependencies]
+bitcoin_relations = { path = "../relations" }
+recovery = { path = "../private-recovery-relations" }
+lineage = { path = "../private-lineage-relations" }
+transfer = { path = "../private-transfer-relations" }
+bignum = { path = "../vendor/noir-bignum" }
+packing = { path = "../packing" }
