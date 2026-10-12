@@ -3,10 +3,9 @@
 // deposit address; the wallet still saves recovery before publishing it.
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { gatewayRequest } from './chain-bridge.mjs';
+import { trustedRuntimeDirectory } from './trust.mjs';
 
-const here = path.dirname(fileURLToPath(import.meta.url));
 const MAX_TRANSACTION_HEX = 200_000;
 
 export class FaucetError extends Error {
@@ -29,10 +28,10 @@ export class FaucetClient {
     this.request = request;
   }
 
-  static async load() {
+  static async load(directory = trustedRuntimeDirectory()) {
     const [services, certificate] = await Promise.all([
-      readFile(path.join(here, 'public-services.json'), 'utf8').then(JSON.parse),
-      readFile(path.join(here, 'public-chain-certificate.pem')),
+      readFile(path.join(directory, 'public-services.json'), 'utf8').then(JSON.parse),
+      readFile(path.join(directory, 'public-chain-certificate.pem')),
     ]);
     return new FaucetClient(services, certificate);
   }

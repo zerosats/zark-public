@@ -25,6 +25,12 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --all-targets --locked
+      - name: Build source wallet for clean setup check
+        run: cargo build --locked -p zark-wallet --bin zark-wallet
+      - name: Fresh source runtime and wallet (no server requests)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/check-source-launch.mjs "${{ runner.temp }}/zark-fresh-source"
       - run: sh apps/desktop/test.sh
       - name: Bundled Node runtime
         uses: actions/setup-node@v4

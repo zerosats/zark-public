@@ -22,6 +22,17 @@ Macs are not supported. Existing wallets must stay with their original deploymen
 
 ## Build and test
 
+To build and use the desktop wallet, install the [platform prerequisites](docs/building.md#prerequisites),
+authenticate GitHub CLI while the repo is private, then run:
+
+```sh
+./run-wallet.sh jonny
+```
+
+The launcher downloads and verifies the matching proving runtime and deployment
+settings, builds the wallet and window from source, and connects to MutinyNet.
+The first run needs about 600 MB of downloads; subsequent launches reuse them.
+
 Install the pinned Rust toolchain, Node.js 20+ and Python 3.11+.
 
 ```sh

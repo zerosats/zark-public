@@ -2,9 +2,28 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { FaucetClient } from './faucet.mjs';
 import { safeError } from './controller.mjs';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
 
 const services = { chain_address: '192.0.2.1:7449', chain_server_name: 'chain.internal', chain_certificate_sha256: 'a'.repeat(64) };
 const reply = (status, value) => async () => ({ status, body: Buffer.from(JSON.stringify(value)) });
+
+test('source launches load faucet settings from the selected runtime', async t => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'zark-faucet-trust-'));
+  const previous = process.env.ZARK_TRUSTED_RUNTIME;
+  t.after(async () => {
+    if (previous === undefined) delete process.env.ZARK_TRUSTED_RUNTIME;
+    else process.env.ZARK_TRUSTED_RUNTIME = previous;
+    await rm(directory, { recursive: true, force: true });
+  });
+  await writeFile(path.join(directory, 'public-services.json'), JSON.stringify(services));
+  await writeFile(path.join(directory, 'public-chain-certificate.pem'), 'selected public certificate');
+  process.env.ZARK_TRUSTED_RUNTIME = directory;
+  const client = await FaucetClient.load();
+  assert.equal(client.gateway.address, services.chain_address);
+  assert.equal(client.certificate.toString(), 'selected public certificate');
+});
 
 test('faucet requests use the pinned gateway and return validated transactions', async () => {
   const calls = [];

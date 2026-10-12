@@ -1,0 +1,36 @@
+{
+  "repository": "zerosats/zark-public",
+  "tag": "desktop-v0.1.0-mutinynet",
+  "deployment": "d9b52c43931931f79a97992ab40ed3b259afc724716a5d8df06dae5210e9ac02",
+  "trust": {
+    "deployment.json": "c28553d4ef0b949eee9da67d172c5cae3036b16c2da422186b9be6e83afc3f48",
+    "public-services.json": "c62c9ebea1045910475e7d85ca1e71009d8c81e83c1e09536f3c42c0d71268c2",
+    "public-chain-certificate.pem": "66aed46dcc581588f210b1cd66c700b1a304b44b310b8a67ee14d42a333dac0d"
+  },
+  "platforms": {
+    "darwin-arm64": {
+      "asset": "Zark-0.1.0-mac-arm64.dmg",
+      "sha256": "b4c18285c2543dcaa40f0b86775f62f064150b465290fedf08773f5ccc41cb4a",
+      "trust": {
+        "asset-hashes.json": "cd05f44d8ede0faeb1084d2d986989489df5b9fdf40fc64845d0e4fdff02543b",
+        "public-deployment-pins.json": "18f243cf94b867f3dcb68f9be070ed82ab8543a73d82e546d22f318a9c9518b8"
+      }
+    },
+    "linux-arm64": {
+      "asset": "Zark-0.1.0-linux-arm64.AppImage",
+      "sha256": "2f91e4e6836371a9ee3eb18d6a1c339fdbeb91760a960c5a8765c5a15f7870db",
+      "trust": {
+        "asset-hashes.json": "53895fa03fee02be4683cc55874405f9b73724cd1b5b90ec1658e9836ff6880d",
+        "public-deployment-pins.json": "ecd76833e33832087baae64a22d5ceb79769448100c944a6fcf1e34736f2c9bd"
+      }
+    },
+    "linux-x64": {
+      "asset": "Zark-0.1.0-linux-x64.AppImage",
+      "sha256": "00ee49a48e2cddc32cd2f3fe12af7c48944b7ea7688cf1c9c74b820510b8ed1b",
+      "trust": {
+        "asset-hashes.json": "0a24d0a0ea2db4848381075aa8eb09cc723f7c6e6d3d4cb6cc854772b7baf25c",
+        "public-deployment-pins.json": "ecd76833e33832087baae64a22d5ceb79769448100c944a6fcf1e34736f2c9bd"
+      }
+    }
+  }
+}

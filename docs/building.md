@@ -6,23 +6,43 @@ or AMD Zen onwards on x86-64). No Windows or Intel Mac package is qualified.
 
 ## Prerequisites
 
-Use Rust 1.95.0 (`rust-toolchain.toml`), Node.js 20+, Python 3.11+, OpenSSL and
-Git. macOS needs Xcode Command Line Tools. Debian/Ubuntu desktop builds need:
+To build and run the desktop wallet, install Rust through rustup, Node.js 20+,
+Git and GitHub CLI (`gh`). Install the pinned Rust toolchain with
+`rustup toolchain install 1.95.0 --profile minimal`.
+While this repository is private, run `gh auth login` using an account with
+repository access so the launcher can download the runtime release.
+macOS needs Xcode Command Line Tools. Debian/Ubuntu desktop builds need:
 
 ```sh
-sudo apt install build-essential pkg-config libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libfuse2
-cargo +1.95.0 install tauri-cli --version 2.12.0 --locked
+sudo apt install build-essential pkg-config libssl-dev libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev
 ```
 
-Build the wallet with locked dependencies and neutral source paths:
+From a fresh checkout, build and launch a normal MutinyNet wallet:
 
 ```sh
-python3 scripts/native_build.py -- build --release --locked --workspace --bins
-cargo build --release --locked --manifest-path apps/desktop-tauri/Cargo.toml
+./run-wallet.sh jonny
 ```
 
-`sh apps/desktop/run.sh --preview` opens a UI preview with synthetic data. For a
-real wallet, first obtain a qualified tool bundle and matching deployment trust:
+The first launch downloads the matching platform release (about 600 MB), checks
+its SHA-256 against `runtime/desktop-release.json`, and imports its public trust,
+proving tools, CRS and compiled circuits. It builds the wallet and Tauri window
+from your checkout, then opens a wallet with the same MutinyNet connection and
+free-test-sats flow as the downloaded app. Later launches reuse and recheck the
+runtime. No certificate files, operator ZIPs or manual deployment paths are needed.
+
+Runtime downloads live in `~/Library/Caches/Zark/source-runtime` on Mac or
+`${XDG_CACHE_HOME:-~/.cache}/zark/source-runtime` on Linux. Set an absolute
+`ZARK_RUNTIME_CACHE` to use another cache. Wallets live separately under the
+deployment identity in the normal profile locations below. Deleting a runtime
+cache does not delete a wallet. Existing wallets keep their frozen deployment.
+Builds default to two compiler jobs; `CARGO_BUILD_JOBS` overrides this.
+
+Python 3.11+ and OpenSSL are also needed for the advanced source-tool and release
+recipes below. Packaging uses Tauri CLI 2.12.0 (`cargo +1.95.0 install tauri-cli
+--version 2.12.0 --locked`); running the source wallet does not need it.
+
+`sh apps/desktop/run.sh --preview` opens a UI preview with synthetic data.
+Operators can still select a different qualified runtime explicitly:
 
 ```sh
 export ZARK_TRUSTED_RUNTIME=/absolute/deployment/trust
@@ -32,7 +52,7 @@ export ZARK_DESKTOP_BASE=/absolute/new-wallet-directory
 ```
 
 Trust settings contain public certificates and pins, never signer keys or RPC
-credentials. Missing settings fail before building; there is no old-server fallback.
+credentials. Explicit settings are validated; there is no old-server fallback.
 Normal profile locations are `~/Library/Application Support/Zark` on macOS and
 `$XDG_DATA_HOME/zark` (default `~/.local/share/zark`) on Linux. Use a separate base
 for local tests and for each new deployment. Packaged apps select a
