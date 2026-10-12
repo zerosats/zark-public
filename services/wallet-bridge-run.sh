@@ -1,6 +1,7 @@
 #!/bin/sh
 set -eu
 exec /usr/bin/python3 -B /opt/zark-wallet-bridge/services/wallet_bridge.py \
+  --port "$(cat /etc/zark-wallet-bridge/port)" \
   --pins /opt/zark-wallet-bridge/pins.json \
   --inventory /opt/zark-wallet-bridge/inventory.json \
   --suite /opt/zark-wallet-bridge/suite \

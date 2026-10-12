@@ -17,7 +17,10 @@ forwards native mailbox envelopes, unwraps restricted chain RPC results, and
 never retries a transmitted operation. `connected` in the legacy status reply
 means mailbox health only; it does not qualify a transfer.
 
-The adapter binds HTTPS to loopback port 7450. A separate Nginx SNI server for
+The adapter binds HTTPS to an available loopback port (7450, falling back to
+17450–17469, or an explicit `ZARK_BRIDGE_PORT` when installing). The selected
+port is stored in `/etc/zark-wallet-bridge/port` and rendered into the Nginx
+configuration. A separate Nginx SNI server for
 `zark-signer.lx.dev` proxies to it with verified TLS, preserving the existing
 default chain endpoint and native signer listener. Native egress verifies the
 operator-supplied leaf pins and names (`signer.internal`, `chain.internal`), with

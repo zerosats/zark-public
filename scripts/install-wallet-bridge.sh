@@ -9,11 +9,25 @@ test ! -e /etc/nginx/sites-enabled/zark-wallet-bridge
 test ! -e /etc/nginx/sites-available/zark-wallet-bridge
 test ! -e /etc/systemd/system/zark-wallet-bridge.service
 test ! -e /opt/zark-wallet-bridge
-python3 - <<'PY'
-import socket
-with socket.socket() as listener:
-    listener.bind(("127.0.0.1", 7450))
+bridge_port="$(python3 - "${ZARK_BRIDGE_PORT:-}" <<'PY'
+import socket, sys
+requested = sys.argv[1]
+if requested and (not requested.isascii() or not requested.isdecimal() or not 1024 <= int(requested) <= 65535):
+    raise SystemExit("Invalid ZARK_BRIDGE_PORT")
+candidates = [int(requested)] if requested else [7450, *range(17450, 17470)]
+for port in candidates:
+    with socket.socket() as listener:
+        try:
+            listener.bind(("127.0.0.1", port))
+        except OSError:
+            continue
+        print(port)
+        break
+else:
+    raise SystemExit("No available private bridge port; set ZARK_BRIDGE_PORT to a free port")
 PY
+ )"
+printf 'Using private bridge port %s\n' "$bridge_port"
 nginx -t
 python3 -m unittest discover -s "$bridge_source/services" -p test_wallet_bridge.py
 python3 - "$bridge_source/pins.json" <<'PY'
@@ -40,6 +54,8 @@ if ! id zark-wallet-bridge >/dev/null 2>&1; then
     --shell /usr/sbin/nologin zark-wallet-bridge
 fi
 install -d -m 755 /etc/zark-wallet-bridge
+printf '%s\n' "$bridge_port" > /etc/zark-wallet-bridge/port
+chmod 644 /etc/zark-wallet-bridge/port
 install -m 755 "$bridge_source/services/wallet-bridge-run.sh" /usr/local/sbin/zark-wallet-bridge-run
 install -m 755 "$bridge_source/services/wallet-bridge-tls-reload.sh" /usr/local/sbin/zark-wallet-bridge-tls-reload
 
@@ -84,7 +100,9 @@ runuser -u zark-wallet-bridge -- /usr/local/sbin/zark-wallet-bridge-run --check-
 install -m 644 "$bridge_source/services/zark-wallet-bridge.service" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now zark-wallet-bridge.service
-install -m 644 "$bridge_source/services/wallet-bridge.nginx.conf" /etc/nginx/sites-available/zark-wallet-bridge
+sed "s/127.0.0.1:7450/127.0.0.1:$bridge_port/" "$bridge_source/services/wallet-bridge.nginx.conf" \
+  > /etc/nginx/sites-available/zark-wallet-bridge
+chmod 644 /etc/nginx/sites-available/zark-wallet-bridge
 ln -s /etc/nginx/sites-available/zark-wallet-bridge /etc/nginx/sites-enabled/zark-wallet-bridge
 if ! nginx -t; then
   unlink /etc/nginx/sites-enabled/zark-wallet-bridge
