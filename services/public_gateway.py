@@ -18,9 +18,11 @@ import socket
 import ssl
 import stat
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from observation import observe, validate_request
+from browser_policy import BrowserPolicy
 
 
 RPC_METHODS = frozenset({
@@ -71,9 +73,11 @@ class Gateway(ThreadingHTTPServer):
     daemon_threads = True
     request_queue_size = 32
 
-    def __init__(self, address, assets, rpc_auth, rpc_port, faucet_port=None, *, trusted_proxy=False):
+    def __init__(self, address, assets, rpc_auth, rpc_port, faucet_port=None, *, trusted_proxy=False,
+                 allowed_origins=(), allowed_hosts=()):
         if trusted_proxy and not ipaddress.ip_address(address[0]).is_loopback:
             raise ValueError("trusted proxy mode must bind to loopback")
+        self.browser_policy = BrowserPolicy(allowed_origins, allowed_hosts)
         super().__init__(address, Handler)
         # Accepted sockets inherit this before TLS begins. Separate TLS records
         # for headers/body (and handshake tickets) must not wait for an ACK.
@@ -115,6 +119,79 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         # Do not log transaction bodies or Core error text.
         pass
+
+    def end_headers(self):
+        self.send_header("Vary", "Origin, Access-Control-Request-Method, Access-Control-Request-Headers")
+        if getattr(self, "cors_origin", None):
+            self.send_header("Access-Control-Allow-Origin", self.cors_origin)
+            self.send_header("Access-Control-Expose-Headers", "X-Zark-Observation")
+        super().end_headers()
+
+    def browser_access(self):
+        # Reset on EVERY keep-alive request; a previous caller's allowed origin
+        # must never make a subsequent denied response readable.
+        self.cors_origin = None
+        if self.headers.get_all("Origin") is None:
+            return True  # Existing native clients retain their pinned TLS path.
+        if (not self.server.browser_policy.allows(self.headers)
+                or not (self.path in ("/rpc", "/health") or self.path.startswith("/assets/"))
+                or any(self.headers.get_all(name) for name in
+                       ("Cookie", "Authorization", "Content-Encoding", "Transfer-Encoding"))):
+            self.close_connection = True
+            self.error(403, "Browser request denied")
+            return False
+        self.cors_origin = self.headers["Origin"]
+        return True
+
+    def do_OPTIONS(self):
+        if not self.browser_access():
+            return
+        method = "POST" if self.path == "/rpc" else "GET"
+        requested = self.headers.get_all("Access-Control-Request-Method", [])
+        names = self.headers.get_all("Access-Control-Request-Headers", [])
+        lengths = self.headers.get_all("Content-Length", [])
+        if (not self.cors_origin or requested != [method] or len(names) > 1
+                or any(name.strip().lower() != "content-type" for value in names for name in value.split(","))
+                or lengths not in ([], ["0"])):
+            self.close_connection = True
+            return self.error(400, "Invalid preflight")
+        self.send_response(204)
+        self.send_header("Content-Length", "0")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Access-Control-Allow-Methods", method)
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Max-Age", "60")
+        self.end_headers()
+
+    def read_body(self, limit):
+        lengths = self.headers.get_all("Content-Length", [])
+        if (len(lengths) != 1 or len(lengths[0]) > len(str(limit))
+                or not lengths[0].isascii() or not lengths[0].isdecimal()
+                or not 0 < int(lengths[0]) <= limit
+                or self.headers.get_all("Transfer-Encoding") or self.headers.get_all("Content-Encoding")):
+            self.close_connection = True
+            self.error(413, "Invalid request size")
+            return None
+        deadline = time.monotonic() + 8
+        body, remaining = bytearray(), int(lengths[0])
+        try:
+            while remaining:
+                timeout = deadline - time.monotonic()
+                if timeout <= 0:
+                    raise TimeoutError()
+                self.connection.settimeout(timeout)
+                chunk = self.rfile.read1(min(remaining, 64 * 1024))
+                if not chunk:
+                    raise OSError("incomplete body")
+                body.extend(chunk)
+                remaining -= len(chunk)
+        except OSError:
+            self.close_connection = True
+            self.error(408, "Incomplete request")
+            return None
+        finally:
+            self.connection.settimeout(self.timeout)
+        return bytes(body)
 
     def error(self, code, message):
         body = (message + "\n").encode()
@@ -162,6 +239,8 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(result)
 
     def do_GET(self):
+        if not self.browser_access():
+            return
         if self.path == "/faucet":
             return self.faucet()
         if self.path == "/health":
@@ -195,22 +274,22 @@ class Handler(BaseHTTPRequestHandler):
             self.close_connection = True
 
     def do_POST(self):
-        length = self.headers.get("Content-Length")
-        if self.path == "/faucet":
-            if (not length or not length.isascii() or not length.isdecimal()
-                    or not 0 < int(length) <= MAX_FAUCET_REQUEST
-                    or self.headers.get("Transfer-Encoding")):
-                self.close_connection = True
-                return self.error(413, "Invalid faucet request size")
-            return self.faucet(self.rfile.read(int(length)))
-        if self.path != "/rpc":
-            return self.error(404, "Not found")
-        if (not length or not length.isascii() or not length.isdecimal()
-                or not 0 < int(length) <= MAX_RPC_REQUEST
-                or self.headers.get("Transfer-Encoding")):
+        if not self.browser_access():
+            return
+        if self.cors_origin and self.headers.get_content_type() != "application/json":
             self.close_connection = True
-            return self.error(413, "Invalid RPC request size")
-        body = self.rfile.read(int(length))
+            return self.error(415, "JSON required")
+        if self.path == "/faucet":
+            body = self.read_body(MAX_FAUCET_REQUEST)
+            if body is not None:
+                return self.faucet(body)
+            return
+        if self.path != "/rpc":
+            self.close_connection = True
+            return self.error(404, "Not found")
+        body = self.read_body(MAX_RPC_REQUEST)
+        if body is None:
+            return
         try:
             request = json.loads(body)
             if (not isinstance(request, dict)
@@ -284,6 +363,8 @@ def main():
     parser.add_argument("--trusted-loopback-proxy", action="store_true")
     parser.add_argument("--rpc-auth", required=True, type=Path)
     parser.add_argument("--faucet-port", type=int)
+    parser.add_argument("--allowed-origin", action="append", default=[])
+    parser.add_argument("--allowed-host", action="append", default=[])
     args = parser.parse_args()
     assets = public_assets(args.assets, args.manifest)
     auth = args.rpc_auth.read_bytes().strip()
@@ -295,7 +376,8 @@ def main():
     elif not args.certificate or not args.private_key:
         parser.error("direct mode requires certificate and private key")
     server = Gateway((args.listen, args.port), assets, auth, args.rpc_port, args.faucet_port,
-                     trusted_proxy=args.trusted_loopback_proxy)
+                     trusted_proxy=args.trusted_loopback_proxy,
+                     allowed_origins=args.allowed_origin, allowed_hosts=args.allowed_host)
     if not args.trusted_loopback_proxy:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.minimum_version = ssl.TLSVersion.TLSv1_3

@@ -42,6 +42,7 @@ case "$audit_action" in
     test-real-lineage) exec "$audit_cargo" test -p zark-protocol --release --test lineage_real --locked --offline native_verifier_accepts_full_private_lineage_and_rejects_substitution -- --ignored --exact --nocapture ;;
     test-real-deposit) exec "$audit_cargo" test -p zark-protocol --release --test proof --locked --offline real_native_deposit_verification_pins_roles_and_canonical_statements -- --ignored --exact --nocapture ;;
     test-signer) exec "$audit_cargo" test -p zark-signer --all-targets --locked --offline ;;
+    test-browser) exec "$audit_cargo" test -p zark-signer --lib --locked --offline host::browser::tests::fetch::browser_fetch_uses_https_preflight_and_rejects_unlisted_origins -- --ignored --exact --nocapture ;;
     test-host)
         # Cargo runs this integration test from crates/signer, not the repository root.
         ZARK_TEST_SUITE=${2:?test-host requires the absolute qualified suite directory}
@@ -62,5 +63,5 @@ case "$audit_action" in
     format) exec "$audit_cargo" fmt --all ;;
     fetch) exec "$audit_cargo" fetch ;;
     lock) exec "$audit_cargo" generate-lockfile --offline ;;
-    *) echo 'usage: check-local.sh check|check-wallet|test|test-clients|test-protocol|test-public-corpus|test-real-lineage|test-real-deposit|test-signer|test-host ABS_SUITE ABS_BB ABS_CRS|test-wallet|benchmark-helper|test-real-flow [name]|test-real-prover|test-fast-prover|capacity-benchmark|build|build-release|clippy|fmt|format|noir|circuit-rows ABS_NARGO ABS_BB|fetch|lock' >&2; exit 2 ;;
+    *) echo 'usage: check-local.sh check|check-wallet|test|test-clients|test-protocol|test-public-corpus|test-real-lineage|test-real-deposit|test-signer|test-browser|test-host ABS_SUITE ABS_BB ABS_CRS|test-wallet|benchmark-helper|test-real-flow [name]|test-real-prover|test-fast-prover|capacity-benchmark|build|build-release|clippy|fmt|format|noir|circuit-rows ABS_NARGO ABS_BB|fetch|lock' >&2; exit 2 ;;
 esac

@@ -5,6 +5,33 @@ use super::{
     hash, io, json,
 };
 
+pub(super) fn tls_config(
+    certificate: &std::path::Path,
+    private_key: &std::path::Path,
+    protocols: Vec<Vec<u8>>,
+) -> Result<rustls::ServerConfig> {
+    use std::os::unix::fs::PermissionsExt;
+    ensure!(
+        std::fs::symlink_metadata(private_key)?.is_file()
+            && std::fs::metadata(private_key)?.permissions().mode() & 0o077 == 0,
+        "private TLS key permissions"
+    );
+    let pem = super::read_bounded(certificate, 1_000_000)?;
+    let certs =
+        rustls_pemfile::certs(&mut pem.as_slice()).collect::<std::result::Result<Vec<_>, _>>()?;
+    let key_bytes = Zeroizing::new(super::read_bounded(private_key, 1_000_000)?);
+    let key = rustls_pemfile::private_key(&mut key_bytes.as_slice())?
+        .ok_or_else(|| anyhow::anyhow!("private TLS key"))?;
+    let mut tls = rustls::ServerConfig::builder_with_provider(std::sync::Arc::new(
+        rustls::crypto::ring::default_provider(),
+    ))
+    .with_protocol_versions(&[&rustls::version::TLS13])?
+    .with_no_client_auth()
+    .with_single_cert(certs, key)?;
+    tls.alpn_protocols = protocols;
+    Ok(tls)
+}
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Outer {

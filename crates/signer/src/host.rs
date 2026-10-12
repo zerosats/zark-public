@@ -1,25 +1,37 @@
 //! Bounded, authenticated TLS data plane for the Zark signer.
 //! Request bodies, peer addresses, proofs and credentials are not logged.
 mod admission;
+mod browser;
 mod config;
+mod dispatch;
 mod keepalive;
+mod reply;
 mod transport;
-use admission::{Permit, UsageMap, admit, admit_start, continuation, guard, queue_for, recovery};
+use admission::{Permit, UsageMap};
+#[cfg(test)]
+use admission::{admit, admit_start, continuation, guard, queue_for, recovery};
+pub use browser::Config as BrowserConfig;
 pub use config::{Credential, HostedConfig, PublicAccess};
-use keepalive::{Held, Ingress, park};
-use transport::{DeadlineStream, Tls, classify, decode, failure, read_request, reply, unexpired};
+use dispatch::Dispatch;
+use keepalive::{Held, Ingress};
+use reply::Reply;
+#[cfg(test)]
+use transport::failure;
+use transport::{DeadlineStream, Tls, classify, decode, read_request, reply, unexpired};
 
 use crate::{engine::Engine, input::read_bounded};
 use anyhow::{Context, Result, ensure};
-use rustls::{ServerConfig, ServerConnection, StreamOwned};
+#[cfg(test)]
+use rustls::ServerConfig;
+use rustls::{ServerConnection, StreamOwned};
 use serde::Deserialize;
 use serde_json::{Value, json};
+#[cfg(test)]
+use std::fs;
 use std::{
     collections::{BTreeMap, BTreeSet},
-    fs,
     io::{self, BufRead, BufReader, Read, Write},
     net::{SocketAddr, TcpListener, TcpStream},
-    os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     sync::{Arc, Mutex, mpsc},
     thread,
@@ -61,7 +73,7 @@ fn workers<T: Send + 'static>(
     }
 }
 struct Work {
-    stream: Tls,
+    reply: Reply,
     request: Request,
     digest: Option<String>,
     deadline: Instant,
@@ -69,7 +81,7 @@ struct Work {
     _permits: Vec<Permit>,
 }
 struct MailWork {
-    stream: Tls,
+    reply: Reply,
     request: zark_protocol::mail::Request,
     _permits: Vec<Permit>,
     deadline: Instant,
@@ -93,29 +105,24 @@ fn serve_listener(
     config: HostedConfig,
     engine: Arc<Engine>,
 ) -> Result<()> {
-    ensure!(
-        fs::symlink_metadata(&config.private_key)?.is_file()
-            && fs::metadata(&config.private_key)?.permissions().mode() & 0o077 == 0,
-        "private TLS key permissions"
-    );
-    let pem = read_bounded(&config.certificate, 1_000_000)?;
-    let certs =
-        rustls_pemfile::certs(&mut pem.as_slice()).collect::<std::result::Result<Vec<_>, _>>()?;
-    let key_bytes = Zeroizing::new(read_bounded(&config.private_key, 1_000_000)?);
-    let key = rustls_pemfile::private_key(&mut key_bytes.as_slice())?.context("private TLS key")?;
-    let mut tls =
-        ServerConfig::builder_with_provider(Arc::new(rustls::crypto::ring::default_provider()))
-            .with_protocol_versions(&[&rustls::version::TLS13])?
-            .with_no_client_auth()
-            .with_single_cert(certs, key)?;
-    tls.alpn_protocols = vec![
-        zark_protocol::remote::SESSION_ALPN.to_vec(),
-        zark_protocol::remote::EARLY_SESSION_ALPN.to_vec(),
-        ALPN.to_vec(),
-        zark_protocol::mail::SESSION_ALPN.to_vec(),
-        zark_protocol::mail::ALPN.to_vec(),
-    ];
+    let tls = transport::tls_config(
+        &config.certificate,
+        &config.private_key,
+        vec![
+            zark_protocol::remote::SESSION_ALPN.to_vec(),
+            zark_protocol::remote::EARLY_SESSION_ALPN.to_vec(),
+            ALPN.to_vec(),
+            zark_protocol::mail::SESSION_ALPN.to_vec(),
+            zark_protocol::mail::ALPN.to_vec(),
+        ],
+    )?;
     let tls = Arc::new(tls);
+    // Bind and validate both listeners before starting any service threads.
+    let browser = config
+        .browser
+        .as_ref()
+        .map(browser::Listener::bind)
+        .transpose()?;
     let (connections, rx) = mpsc::sync_channel::<(Ingress, Instant)>(config.queue_capacity);
     let idle_connections =
         keepalive::start(connections.clone(), config.queue_capacity, Held::Sessions);
@@ -155,7 +162,7 @@ fn serve_listener(
                 return;
             }
         };
-        while let Ok(mut job) = mail_rx.recv() {
+        while let Ok(job) = mail_rx.recv() {
             let result = (|| -> Result<Value> {
                 unexpired(job.deadline)?;
                 let current = HostedConfig::load(&mail_path)?;
@@ -171,9 +178,11 @@ fn serve_listener(
                 let now = u64::try_from(SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis())?;
                 Ok(service.handle(job.request, now))
             })();
-            let written = reply(&mut job.stream, result.unwrap_or_else(|e| classify(&e)));
-            drop(job._permits);
-            park(&mail_idle, job.stream, written);
+            job.reply.finish(
+                result.unwrap_or_else(|e| classify(&e)),
+                &mail_idle,
+                job._permits,
+            );
         }
     });
     startup.recv().context("mail worker startup")??;
@@ -188,37 +197,39 @@ fn serve_listener(
         let engine = engine.clone();
         let path = path.to_path_buf();
         let idle_connections = idle_connections.clone();
-        workers(jobs, count, move |mut job| {
+        workers(jobs, count, move |job| {
             zark_protocol::timing::record(
                 zark_protocol::timing::Phase::SignerQueue,
                 job.queued.elapsed(),
             );
-            let check = || guard(&path, &job.request, job.digest.as_deref(), job.deadline);
-            let response = match check().and_then(|_| engine.handle_guarded(&job.request, check)) {
-                Ok(response) => json!({"ok":true,"result":{"version":10,"response":response}}),
-                Err(error) => classify(&error),
-            };
-            let written = reply(&mut job.stream, response);
-            // Release per-request permits before admitting another frame. Every
-            // request still passes parsing, admission and the fresh Engine guard.
-            drop(job._permits);
-            park(&idle_connections, job.stream, written);
+            let response = dispatch::execute(&engine, &path, &job);
+            job.reply.finish(response, &idle_connections, job._permits);
         });
+    }
+    let dispatch = Dispatch {
+        path: path.to_path_buf(),
+        ordinary: work,
+        continued: continuation_work,
+        recovered: recovery_work,
+        mail: mail_jobs,
+        usage,
+        continuation_usage,
+        recovery_usage,
+        mail_usage,
+    };
+    if let Some(browser) = browser {
+        browser.start(
+            dispatch.clone(),
+            config.network_workers,
+            config.queue_capacity,
+        );
     }
     for _ in 0..config.network_workers {
         let rx = rx.clone();
         let tls = tls.clone();
-        let work = work.clone();
-        let continuation_work = continuation_work.clone();
-        let recovery_work = recovery_work.clone();
-        let usage = usage.clone();
-        let continuation_usage = continuation_usage.clone();
-        let recovery_usage = recovery_usage.clone();
-        let mail_usage = mail_usage.clone();
-        let mail_jobs = mail_jobs.clone();
+        let dispatch = dispatch.clone();
         let connections = connections.clone();
         let early_connections = early_connections.clone();
-        let path = path.to_path_buf();
         thread::spawn(move || {
             loop {
                 let Ok((socket, accepted)) = rx.lock().unwrap().recv() else {
@@ -266,24 +277,9 @@ fn serve_listener(
                         return Ok(Incoming::Early);
                     }
                     if zark_protocol::mail::is_alpn(stream.conn.alpn_protocol()) {
-                        let current = HostedConfig::load(&path)?;
-                        let limits = current.messaging.context("messaging disabled")?;
                         // Separate budgets and worker: mailbox traffic never uses proof permits.
                         let peer = stream.sock.stream.peer_addr()?.ip().to_canonical();
-                        let permits = vec![
-                            admit(
-                                &mail_usage,
-                                "mail:global".into(),
-                                limits.max_inflight,
-                                limits.requests_per_minute,
-                            )?,
-                            admit(
-                                &mail_usage,
-                                format!("mail:peer:{peer}"),
-                                limits.peer_max_inflight,
-                                limits.peer_requests_per_minute,
-                            )?,
-                        ];
+                        let permits = dispatch.mail_permits(peer)?;
                         let bytes = read_request(&mut stream, zark_protocol::mail::MAX_WIRE)?;
                         let request = serde_json::from_slice(&bytes)
                             .map_err(|_| anyhow::anyhow!("invalid mail request"))?;
@@ -295,34 +291,11 @@ fn serve_listener(
                         "private TLS protocol mismatch"
                     );
                     let (request, digest) = decode(&read_request(&mut stream, OUTER_LIMIT)?)?;
-                    let permits = if continuation(&request.command) {
-                        // The Engine authenticates the frozen operation/session
-                        // (and claim proof where required). Service credential
-                        // expiry/revocation cannot strand admitted operations.
-                        vec![admit(
-                            if recovery(&request.command) {
-                                &recovery_usage
-                            } else {
-                                &continuation_usage
-                            },
-                            format!("session:{}", hex::encode(request.context.session_auth)),
-                            2,
-                            60,
-                        )?]
-                    } else {
-                        let current = HostedConfig::load(&path)?;
-                        admit_start(
-                            &current,
-                            if matches!(request.command, Command::ExitPrepare { .. }) {
-                                &continuation_usage
-                            } else {
-                                &usage
-                            },
-                            &request,
-                            digest.as_deref(),
-                            stream.sock.stream.peer_addr()?.ip(),
-                        )?
-                    };
+                    let permits = dispatch.signing_permits(
+                        &request,
+                        digest.as_deref(),
+                        stream.sock.stream.peer_addr()?.ip(),
+                    )?;
                     Ok(Incoming::Signing(Box::new(request), digest, permits))
                 })();
                 let (request, digest, permits) = match parsed {
@@ -332,19 +305,7 @@ fn serve_listener(
                         continue;
                     }
                     Ok(Incoming::Mail(request, permits)) => {
-                        let job = MailWork {
-                            stream,
-                            request,
-                            _permits: permits,
-                            deadline: accepted + NETWORK_LIFETIME,
-                        };
-                        if let Err(e) = mail_jobs.try_send(job) {
-                            let mut job = match e {
-                                mpsc::TrySendError::Full(j)
-                                | mpsc::TrySendError::Disconnected(j) => j,
-                            };
-                            reply(&mut job.stream, failure("overloaded", true));
-                        }
+                        dispatch.messaging(Reply::Native(stream), request, permits, accepted);
                         continue;
                     }
                     Err(error) => {
@@ -352,27 +313,7 @@ fn serve_listener(
                         continue;
                     }
                 };
-                let job = Work {
-                    stream,
-                    request,
-                    digest,
-                    deadline: accepted + REQUEST_LIFETIME,
-                    queued: Instant::now(),
-                    _permits: permits,
-                };
-                if let Err(error) = queue_for(
-                    &job.request.command,
-                    &work,
-                    &continuation_work,
-                    &recovery_work,
-                )
-                .try_send(job)
-                {
-                    let mut job = match error {
-                        mpsc::TrySendError::Full(j) | mpsc::TrySendError::Disconnected(j) => j,
-                    };
-                    reply(&mut job.stream, failure("overloaded", true));
-                }
+                dispatch.signing(Reply::Native(stream), request, digest, permits, accepted);
             }
         });
     }
@@ -392,3 +333,5 @@ fn serve_listener(
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+pub(crate) use browser::tests::signer_roundtrip as browser_test_roundtrip;

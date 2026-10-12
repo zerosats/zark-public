@@ -10,6 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from public_gateway import Gateway, public_assets
+from browser_policy import BrowserPolicy
 
 
 class Core(BaseHTTPRequestHandler):
@@ -91,6 +92,18 @@ class GatewayTests(unittest.TestCase):
         connection.close()
         return result
 
+    def browser_request(self, method, path, body=None, headers=None):
+        connection = http.client.HTTPConnection("127.0.0.1", self.gateway.server_port, timeout=3)
+        connection.request(method, path, body, {"Content-Type": "application/json",
+                           "Host": "chain.example.org", "Origin": "https://wallet.example.org", **(headers or {})})
+        response = connection.getresponse()
+        result = response.status, dict(response.getheaders()), response.read()
+        connection.close()
+        return result
+
+    def enable_browser(self):
+        self.gateway.browser_policy = BrowserPolicy(["https://wallet.example.org"], ["chain.example.org"])
+
     def test_only_listed_public_assets_are_served(self):
         self.assertEqual(self.request("GET", "/assets/public.bin"), (200, b"authenticated"))
         self.assertEqual(self.request("GET", "/assets/private-witness")[0], 404)
@@ -161,6 +174,92 @@ class GatewayTests(unittest.TestCase):
         (self.root / "public.bin").write_bytes(b"tampered")
         with self.assertRaisesRegex(ValueError, "hash mismatch"):
             public_assets(self.root, self.manifest)
+
+    def test_browser_origins_are_opt_in_and_rejected_before_core(self):
+        body = json.dumps({"method": "getblockchaininfo", "params": []})
+        self.assertEqual(self.browser_request("POST", "/rpc", body)[0], 403)
+        self.enable_browser()
+        for headers in [{"Origin": "null"}, {"Origin": "https://evil.example.org"},
+                        {"Host": "evil.example.org"}, {"Content-Type": "text/plain"},
+                        {"Authorization": "Basic private"}, {"Cookie": "private"}]:
+            status, response_headers, _ = self.browser_request("POST", "/rpc", body, headers)
+            self.assertIn(status, (403, 415))
+            if status == 403:
+                self.assertNotIn("Access-Control-Allow-Origin", response_headers)
+        self.assertEqual(Core.requests, [])
+        status, headers, reply = self.browser_request("POST", "/rpc", body)
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["Access-Control-Allow-Origin"], "https://wallet.example.org")
+        self.assertNotIn("Access-Control-Allow-Credentials", headers)
+        self.assertEqual(json.loads(reply)["result"]["chain"], "signet")
+        self.assertEqual(len(Core.requests), 1)
+
+    def test_preflight_discovery_assets_and_errors_have_origin_headers(self):
+        self.enable_browser()
+        status, headers, body = self.browser_request("OPTIONS", "/rpc", headers={
+            "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "content-type"})
+        self.assertEqual((status, body), (204, b""))
+        self.assertEqual(headers["Access-Control-Allow-Methods"], "POST")
+        self.assertEqual(self.browser_request("OPTIONS", "/rpc", headers={
+            "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "authorization"})[0], 400)
+        status, headers, _ = self.browser_request("GET", "/health")
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["X-Zark-Observation"], "1")
+        self.assertIn("X-Zark-Observation", headers["Access-Control-Expose-Headers"])
+        self.assertEqual(self.browser_request("GET", "/assets/public.bin")[2], b"authenticated")
+        status, headers, _ = self.browser_request("POST", "/rpc", json.dumps({"method": "stop"}))
+        self.assertEqual(status, 403)
+        self.assertIn("Access-Control-Allow-Origin", headers)
+        self.assertEqual(Core.requests, [])
+        # Browser access does not expose the operator's coin-spending faucet.
+        self.assertEqual(self.browser_request("POST", "/faucet", "{}")[0], 403)
+
+    def test_browser_observation_keeps_evidence_and_tip_fences(self):
+        self.enable_browser()
+        params = ["1", "66" * 32, "0", "77" * 32, "2"]
+        status, headers, body = self.browser_request("POST", "/rpc", json.dumps({
+            "id": "browser", "method": "zark_observe", "params": params}))
+        self.assertEqual(status, 200)
+        self.assertIn("Access-Control-Allow-Origin", headers)
+        reply = json.loads(body)
+        self.assertEqual(reply["result"]["request"], params)
+        self.assertEqual(reply["result"]["reads"][0]["method"], "getblockchaininfo")
+        self.assertEqual(reply["result"]["reads"][-1]["method"], "getblockchaininfo")
+        self.assertEqual(len(Core.requests), 7)
+
+    def test_keepalive_never_leaks_another_requests_allowed_origin(self):
+        self.enable_browser()
+        connection = http.client.HTTPConnection("127.0.0.1", self.gateway.server_port, timeout=3)
+        self.addCleanup(connection.close)
+        for origin, status in [("https://wallet.example.org", 200), ("https://evil.example.org", 403)]:
+            connection.request("GET", "/health", headers={"Host": "chain.example.org", "Origin": origin})
+            response = connection.getresponse()
+            self.assertEqual(response.status, status)
+            self.assertEqual(response.getheader("Access-Control-Allow-Origin"), origin if status == 200 else None)
+            response.read()
+
+    def test_duplicate_lengths_and_encoded_bodies_never_reach_core(self):
+        connection = http.client.HTTPConnection("127.0.0.1", self.gateway.server_port, timeout=3)
+        self.addCleanup(connection.close)
+        connection.putrequest("POST", "/rpc")
+        connection.putheader("Content-Length", "2")
+        connection.putheader("content-length", "2")
+        connection.endheaders(b"{}")
+        response = connection.getresponse()
+        self.assertEqual(response.status, 413)
+        response.read()
+        self.assertEqual(self.request("POST", "/rpc", "{}", {"Content-Encoding": "gzip"})[0], 413)
+        self.assertEqual(self.request("POST", "/rpc", "{}", {"Content-Length": "9" * 5000})[0], 413)
+        self.assertEqual(Core.requests, [])
+
+    def test_origin_configuration_is_exact_and_production_safe(self):
+        for origin in ["*", "null", "https://wallet.example.org/", "https://wallet.example.org:443",
+                       "http://wallet.example.org", "https://user@wallet.example.org", "https://x\r\nX: y"]:
+            with self.assertRaises(ValueError, msg=origin):
+                BrowserPolicy([origin], ["chain.example.org"])
+        with self.assertRaises(ValueError):
+            BrowserPolicy(["https://wallet.example.org"])
+        BrowserPolicy(["http://127.0.0.1:5173"], ["localhost:8443"])
 
 
 if __name__ == "__main__":

@@ -330,17 +330,25 @@ fn run(args: Args) -> Result<()> {
     let hosted = read_hosted(&config.hosted)?;
     // Key and certificate parsing is repeated by the listener; these checks
     // prevent weak file ownership/modes even when --check-config is used.
-    private_path(&hosted.private_key)?;
-    let tls_key = Zeroizing::new(read_trusted(&hosted.private_key, 1_000_000)?);
-    let tls_certificate = read_trusted(&hosted.certificate, 1_000_000)?;
-    let certificates = rustls_pemfile::certs(&mut tls_certificate.as_slice())
-        .collect::<std::result::Result<Vec<_>, _>>()?;
-    let tls_private = rustls_pemfile::private_key(&mut tls_key.as_slice())?
-        .context("TLS private key is missing")?;
-    rustls::ServerConfig::builder_with_provider(Arc::new(rustls::crypto::ring::default_provider()))
+    let mut tls_files = vec![(&hosted.certificate, &hosted.private_key)];
+    if let Some(browser) = &hosted.browser {
+        tls_files.push((&browser.certificate, &browser.private_key));
+    }
+    for (certificate, private_key) in tls_files {
+        private_path(private_key)?;
+        let tls_key = Zeroizing::new(read_trusted(private_key, 1_000_000)?);
+        let tls_certificate = read_trusted(certificate, 1_000_000)?;
+        let certificates = rustls_pemfile::certs(&mut tls_certificate.as_slice())
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        let tls_private = rustls_pemfile::private_key(&mut tls_key.as_slice())?
+            .context("TLS private key is missing")?;
+        rustls::ServerConfig::builder_with_provider(Arc::new(
+            rustls::crypto::ring::default_provider(),
+        ))
         .with_protocol_versions(&[&rustls::version::TLS13])?
         .with_no_client_auth()
         .with_single_cert(certificates, tls_private)?;
+    }
     ensure!(
         config.suite_directory.is_absolute() && config.crs.directory.is_absolute(),
         "suite and CRS directories must be absolute"

@@ -7,6 +7,7 @@ mod harness;
 use batch::BatchCase;
 use harness::Harness;
 mod bootstrap;
+mod browser;
 mod cancellation;
 mod capacity;
 mod exit;

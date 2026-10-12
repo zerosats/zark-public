@@ -19,6 +19,9 @@ pub struct HostedConfig {
     /// Optional encrypted delivery and public offer board on the same TLS socket.
     #[serde(default)]
     pub messaging: Option<crate::mail::Config>,
+    /// Independent browser HTTPS certificate; the native certificate/pin stays unchanged.
+    #[serde(default)]
+    pub browser: Option<super::browser::Config>,
     pub network_workers: usize,
     pub proof_workers: usize,
     pub queue_capacity: usize,
@@ -67,6 +70,13 @@ impl HostedConfig {
         ensure!(self.version == 10, "private hosted version");
         if let Some(mail) = &self.messaging {
             mail.validate()?;
+        }
+        if let Some(browser) = &self.browser {
+            browser.validate()?;
+            ensure!(
+                browser.listen != self.listen,
+                "browser and native listeners must differ"
+            );
         }
         ensure!(
             (1..=16).contains(&self.network_workers)
