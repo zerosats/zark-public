@@ -7,6 +7,60 @@ require a local gateway, native helper, extension or installed certificate.
 The chain facade in `services/public_gateway.py` also supports opt-in browser
 origins. Keys, witnesses, encrypted wallet storage and proving stay in the wallet.
 
+## Production adapter for the Vercel wallet
+
+`services/wallet_bridge.py` implements the wallet's `/api/preview/status`,
+`signer`, `mail`, and `chain` POST routes plus the 19 authenticated
+`/preview-assets/suite/...` GET routes. It is a standalone Python service, not a
+Vite development server. It keeps the inner signer request string intact,
+forwards native mailbox envelopes, unwraps restricted chain RPC results, and
+never retries a transmitted operation. `connected` in the legacy status reply
+means mailbox health only; it does not qualify a transfer.
+
+The adapter binds HTTPS to loopback port 7450. A separate Nginx SNI server for
+`zark-signer.lx.dev` proxies to it with verified TLS, preserving the existing
+default chain endpoint and native signer listener. Native egress verifies the
+operator-supplied leaf pins and names (`signer.internal`, `chain.internal`), with
+TLS 1.3 and the original signer/mail ALPN. CORS permits exactly
+`https://zark.lx.dev`, including the wallet's `X-Zark-Browser-Demo` preflight
+header. An explicit inventory is the only asset allowlist; each GET serves a
+verified snapshot rather than reopening a mutable file after hashing.
+
+Build the public-only deployment package from the wallet's authenticated bundle:
+
+```sh
+python3 scripts/package-wallet-bridge.py --wallet /absolute/path/to/zark-web-wallet
+```
+
+Upload the resulting ignored `work/wallet-bridge-deploy/zark-wallet-bridge.tar.gz`
+to the operator's Ubuntu server, extract it, and run
+`bash zark-wallet-bridge/scripts/install-wallet-bridge.sh` as root. This first
+installation script refuses to replace an existing bridge or Nginx site. It
+runs synthetic TLS tests, creates an isolated service account, obtains a public
+certificate, checks configuration and all asset pins, starts the bridge, tests
+Nginx before reload, and performs read-only public HTTPS checks. No signer
+restart, database change, proof regeneration or wallet-state reset is involved.
+The package contains only an explicit list of source files, pins, public
+certificates and verified suite files; no private key is copied from the wallet.
+
+The installer uses the pinned `acme.sh` 3.1.6 release and explicitly selects
+Let's Encrypt, with no contact email, manual website signup, Certbot, shell
+profile changes or default cron installation. Standalone ACME validation uses
+port 80; keep it available for the installed daily systemd renewal timer. The
+renewal hook publishes a validated certificate/key pair atomically and sends
+SIGHUP to swap the bridge's TLS context for future handshakes, preserving active
+operations. Public TLS keys are separate from the native signer identity.
+See the [ACME client documentation](https://github.com/acmesh-official/acme.sh)
+and [CA selection](https://github.com/acmesh-official/acme.sh/wiki/Server).
+
+`scripts/check-wallet-bridge.py --pins /path/pins.json --inventory /path/inventory.json`
+checks public PKI without a TLS bypass, API CORS and status, pinned-chain reads,
+all 19 asset hashes, and denial of another browser origin. Its success does not
+qualify browser worker isolation, mailbox registration or a funded transfer.
+After it succeeds, configure and rebuild the frontend with
+`VITE_ZARK_GATEWAY_URL=https://zark-signer.lx.dev`. Keep the Cloudflare DNS record
+`A zark-signer 62.238.20.16` in DNS-only mode for this deployment.
+
 This is an additive transport for the existing deployment. Do not regenerate
 deployment keys, circuits, admissions, wallet files or pending operations to
 enable it. For the current MutinyNet wallet, retain the authenticated deployment

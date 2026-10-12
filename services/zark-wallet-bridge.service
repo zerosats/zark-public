@@ -1,0 +1,30 @@
+[Unit]
+Description=Zark pinned browser wallet bridge
+After=network-online.target zark-signer.service nginx.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=zark-wallet-bridge
+Group=zark-wallet-bridge
+ExecStart=/usr/local/sbin/zark-wallet-bridge-run
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=190
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+TasksMax=40
+MemoryMax=1G
+LimitNOFILE=256
+
+[Install]
+WantedBy=multi-user.target
