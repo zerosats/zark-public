@@ -5,17 +5,17 @@ Zark combines a two-party statechain with zero-knowledge proofs and signed
 Bitcoin recovery transactions. The desktop app uses Tauri on Apple Silicon
 macOS and Linux x86-64/arm64.
 
-**MutinyNet test coins only. Unaudited; mainnet is disabled.**
+**MutinyNet test coins only.**
 
 - Claim a sponsored deposit, then send and receive coins off-chain.
 - Exchange coins through atomic swaps coordinated by the signer.
 - Keep recovery material locally and withdraw to Bitcoin.
 - Each coin supports **eight owners: the depositor and seven transfers**.
 
-Download the app from [Releases](https://github.com/zerosats/zark-public/releases/tag/desktop-v0.1.0-mutinynet):
-the signed and notarized Mac DMG is for Apple Silicon; Linux AppImages are
-available for x86-64 and arm64. The packages include their tools and connect to
-the MutinyNet demo automatically. Use **Get free test sats** to start.
+Use the [web wallet at zark.lx.dev](https://zark.lx.dev), or download the
+[desktop app](https://github.com/zerosats/zark-public/releases/tag/desktop-v0.1.0-mutinynet-r2)
+for Apple Silicon Mac (signed and notarized) or Linux x86-64/arm64.
+Desktop packages connect to MutinyNet automatically. Choose **Get free test sats** to start.
 
 Linux x86-64 needs AVX2 (Intel Broadwell or AMD Zen onward). Windows and Intel
 Macs are not supported. Existing wallets must stay with their original deployment.
