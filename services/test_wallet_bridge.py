@@ -9,6 +9,7 @@ import sys
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -265,8 +266,63 @@ class BridgeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             PublicSuite(self.suite, self.inventory, self.pins)
 
+    def test_busy_is_readable_without_using_native_capacity(self):
+        for _ in range(32):
+            self.assertTrue(self.bridge.work_slots.acquire(False))
+        try:
+            code, headers, raw = self.request()
+            self.assertEqual(code, 429)
+            self.assertEqual(headers["Retry-After"], "2")
+            self.assertEqual(headers["Access-Control-Expose-Headers"], "Retry-After")
+            self.assertEqual(headers["Access-Control-Allow-Origin"], ORIGIN)
+            self.assertEqual(decode_json(raw)["code"], "overloaded")
+            # Direct fallback also answers preflight without a work slot.
+            self.assertEqual(self.request(method="OPTIONS", headers={"Access-Control-Request-Method": "POST"})[0], 204)
+            self.assertEqual(self.native.requests, [])
+        finally:
+            for _ in range(32):
+                self.bridge.work_slots.release()
+        self.assertEqual(self.request()[0], 200)
+
+    def test_native_busy_is_distinct_from_unavailable(self):
+        self.native.reply = b'{"ok":false,"error":{"code":"overloaded","retryable":true}}\n'
+        code, headers, raw = self.request("signer", {"method": "zark_request", "request": "{}"})
+        self.assertEqual(code, 429)
+        self.assertEqual(decode_json(raw)["code"], "overloaded")
+        self.assertEqual(headers["Retry-After"], "2")
+        self.assertEqual(len(self.native.requests), 1)
+        self.assertTrue(decode_json(self.request()[2])["busy"])
+
+    def test_faucet_preserves_refusals_and_requires_trusted_client_ip(self):
+        self.assertEqual(self.request("faucet", {"method": "GET"})[0], 503)
+        self.bridge.faucet_port = 12345
+        with patch("wallet_bridge.faucet_call") as upstream:
+            upstream.return_value = (429, {"code": "faucet_daily_limit", "error": "Daily limit"})
+            body = {"method": "POST", "address": "tb1p" + "q" * 58}
+            for header in ({}, {"X-Zark-Client-IP": "invalid"}, {"X-Zark-Client-IP": "192.0.2.1, 192.0.2.2"}):
+                self.assertEqual(self.request("faucet", body, headers=header)[0], 400)
+            upstream.assert_not_called()
+            headers = {"X-Zark-Client-IP": "192.0.2.45", "X-Forwarded-For": "192.0.2.66", "X-Zark-Client": "forged"}
+            code, reply_headers, raw = self.request("faucet", body, headers=headers)
+            upstream.assert_called_once_with(12345, body, "192.0.2.45")
+            self.assertEqual(code, 429)
+            self.assertEqual(decode_json(raw)["code"], "faucet_daily_limit")
+            self.assertNotIn("Retry-After", reply_headers)
+            self.assertEqual(reply_headers["Access-Control-Allow-Origin"], ORIGIN)
+            self.assertEqual(self.request("faucet", {**body, "client": "forged"}, headers=headers)[0], 400)
+        self.assertEqual(self.native.requests, [])
+
+    def test_signed_transaction_route_is_narrow(self):
+        self.assertEqual(chain_params("sendrawtransaction", ["00ff"]), ["00ff"])
+        for args in (["0"], ["GG"], ["00", "1"], ["00" * 100001]):
+            with self.assertRaises(ValueError):
+                chain_params("sendrawtransaction", args)
+        for method in ("sendtoaddress", "walletpassphrase", "getwalletinfo"):
+            with self.assertRaises(ValueError):
+                chain_params(method, [])
+
     def test_route_and_json_restrictions(self):
-        for body in ({"method": "sendrawtransaction", "args": ["00"]}, {"method": "getblockhash", "args": ["-1"]}):
+        for body in ({"method": "sendrawtransaction", "args": ["0"]}, {"method": "getblockhash", "args": ["-1"]}):
             self.assertEqual(self.request("chain", body)[0], 400)
         self.assertEqual(self.chain.requests, [])
         self.assertEqual(self.request("mail", {"version": 1, "method": "POST", "path": "/v1/offers", "body": {}})[0], 400)

@@ -22,7 +22,7 @@ ProtectKernelModules=true
 ProtectControlGroups=true
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 CapabilityBoundingSet=
-TasksMax=40
+TasksMax=64
 MemoryMax=1G
 LimitNOFILE=256
 

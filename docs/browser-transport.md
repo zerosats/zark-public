@@ -10,7 +10,7 @@ origins. Keys, witnesses, encrypted wallet storage and proving stay in the walle
 ## Production adapter for the Vercel wallet
 
 `services/wallet_bridge.py` implements the wallet's `/api/preview/status`,
-`signer`, `mail`, and `chain` POST routes plus the 19 authenticated
+`signer`, `mail`, `chain`, and opt-in `faucet` POST routes plus the 19 authenticated
 `/preview-assets/suite/...` GET routes. It is a standalone Python service, not a
 Vite development server. It keeps the inner signer request string intact,
 forwards native mailbox envelopes, unwraps restricted chain RPC results, and
@@ -28,6 +28,34 @@ TLS 1.3 and the original signer/mail ALPN. CORS permits exactly
 `https://zark.lx.dev`, including the wallet's `X-Zark-Browser-Demo` preflight
 header. An explicit inventory is the only asset allowlist; each GET serves a
 verified snapshot rather than reopening a mutable file after hashing.
+
+Valid OPTIONS requests are answered by nginx with 204 and a 600-second
+preflight cache before bridge admission. Nginx caps concurrent requests at 32;
+the bridge has 32 work slots and eight additional bounded connection slots for
+readable rejections. The systemd task ceiling is 64. This bounds work; it does
+not increase signer or messaging capacity. Explicit busy responses are 429 with
+`code: overloaded`, `retryable: true`, `Retry-After: 2`, and CORS headers exposing
+`Retry-After`. A failed upstream remains 503. The proxy never retries POSTs.
+The PWA may retry an explicit busy reply using identical bytes, with bounded
+backoff; ambiguous timeouts or lost responses require the saved-operation path.
+
+The faucet route accepts only `{"method":"GET"}` or
+`{"method":"POST","address":"<saved Taproot deposit address>"}`. It forwards
+to the existing loopback faucet, with nginx overwriting `X-Zark-Client-IP` from
+`$remote_addr`. The bridge validates that single address and forwards it as
+`X-Zark-Client`; no browser-supplied identity is accepted. Enable it at installation
+with `ZARK_FAUCET_PORT`, or during a coordinated update with an operator-owned
+`/etc/zark-wallet-bridge/faucet-port` file. Without that explicit setting the
+faucet route returns `faucet_disabled`. Include `wallet_faucet.py` when updating
+an existing bridge; the first-install script intentionally refuses replacements.
+
+Existing faucet total/per-IP caps remain authoritative, including for a shared
+venue IP. `429 faucet_daily_limit` must not be treated as transient overload.
+The faucet returns a signed **unbroadcast** funding transaction. The browser
+wallet validates the output, saves its recovery and certificate, then broadcasts
+through the restricted chain route. That route now admits `sendrawtransaction`
+with one bounded lowercase transaction-hex argument; it never admits wallet RPCs.
+No deployment keys, circuit pins, or signer changes are required.
 
 Build the public-only deployment package from the wallet's authenticated bundle:
 

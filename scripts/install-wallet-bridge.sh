@@ -28,6 +28,15 @@ else:
 PY
  )"
 printf 'Using private bridge port %s\n' "$bridge_port"
+bridge_faucet_port="${ZARK_FAUCET_PORT:-}"
+if [ -n "$bridge_faucet_port" ]; then
+  python3 - "$bridge_faucet_port" <<'PYPORT'
+import sys
+port = sys.argv[1]
+if not port.isascii() or not port.isdecimal() or not 1 <= int(port) <= 65535:
+    raise SystemExit("Invalid ZARK_FAUCET_PORT")
+PYPORT
+fi
 nginx -t
 python3 -m unittest discover -s "$bridge_source/services" -p test_wallet_bridge.py
 python3 - "$bridge_source/pins.json" <<'PY'
@@ -56,6 +65,10 @@ fi
 install -d -m 755 /etc/zark-wallet-bridge
 printf '%s\n' "$bridge_port" > /etc/zark-wallet-bridge/port
 chmod 644 /etc/zark-wallet-bridge/port
+if [ -n "$bridge_faucet_port" ]; then
+  printf '%s\n' "$bridge_faucet_port" > /etc/zark-wallet-bridge/faucet-port
+  chmod 644 /etc/zark-wallet-bridge/faucet-port
+fi
 install -m 755 "$bridge_source/services/wallet-bridge-run.sh" /usr/local/sbin/zark-wallet-bridge-run
 install -m 755 "$bridge_source/services/wallet-bridge-tls-reload.sh" /usr/local/sbin/zark-wallet-bridge-tls-reload
 
@@ -88,7 +101,7 @@ sh /var/lib/zark-acme/acme.sh --home /var/lib/zark-acme --install-cert --ecc -d 
   --reloadcmd /usr/local/sbin/zark-wallet-bridge-tls-reload
 
 install -d -m 755 /opt/zark-wallet-bridge /opt/zark-wallet-bridge/services
-for bridge_module in browser_policy.py wallet_assets.py wallet_transport.py wallet_bridge.py; do
+for bridge_module in browser_policy.py wallet_assets.py wallet_transport.py wallet_bridge.py wallet_faucet.py; do
   install -m 644 "$bridge_source/services/$bridge_module" /opt/zark-wallet-bridge/services/
 done
 install -m 644 "$bridge_source/pins.json" "$bridge_source/inventory.json" \

@@ -40,7 +40,7 @@ def chain_params(method, args):
             raise ValueError("invalid observation")
         return args[:]
     arities = {"getblockchaininfo": (0,), "getblockhash": (1,), "getrawtransaction": (1, 2, 3),
-               "gettxout": (2, 3), "getmempoolentry": (1,), "testmempoolaccept": (1,)}
+               "gettxout": (2, 3), "getmempoolentry": (1,), "testmempoolaccept": (1,), "sendrawtransaction": (1,)}
     if len(args) not in arities.get(method, ()):
         raise ValueError("chain method unavailable")
     result = args[:]
@@ -54,6 +54,9 @@ def chain_params(method, args):
             if args[index] not in ("true", "false"):
                 raise ValueError("invalid chain boolean")
             result[index] = args[index] == "true"
+    if method == "sendrawtransaction":
+        if not re.fullmatch(r"(?:[0-9a-f]{2}){1,100000}", args[0]):
+            raise ValueError("invalid signed transaction")
     if method == "testmempoolaccept":
         raws = decode_json(args[0].encode())
         if not isinstance(raws, list) or len(raws) != 1 or not isinstance(raws[0], str) or not re.fullmatch(r"[0-9a-f]+", raws[0]):
@@ -79,6 +82,11 @@ def validate_call(route, body):
                 or not re.fullmatch(r"/(health|v1/offers|v1/mailboxes(?:/[a-f0-9]{64}(?:/messages(?:/[a-f0-9]{64})?)?)?)", body["path"])
                 or (body["path"] == "/v1/offers" and body["method"] != "GET")):
             raise ValueError("invalid mailbox call")
+    elif route == "faucet":
+        if body != {"method": "GET"} and not (set(body) == {"method", "address"}
+                and body["method"] == "POST" and isinstance(body["address"], str)
+                and re.fullmatch(r"tb1p[a-z0-9]{58}", body["address"])):
+            raise ValueError("invalid faucet call")
     elif route == "chain":
         if set(body) != {"method", "args"}:
             raise ValueError("invalid chain call")

@@ -13,9 +13,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from browser_policy import BrowserPolicy
 from wallet_assets import PublicSuite
+from wallet_faucet import faucet_call
 from wallet_transport import LIMIT, NativeTransport, decode_json, encode_json, validate_call
 
-ROUTES = {"/api/preview/" + name: name for name in ("status", "signer", "mail", "chain")}
+ROUTES = {"/api/preview/" + name: name for name in ("status", "signer", "mail", "chain", "faucet")}
 SAFE_ERROR = {"code": "bridge_unavailable", "error": "Pinned transport or proof assets unavailable. Preserve the wallet and resume the saved operation."}
 
 
@@ -36,12 +37,16 @@ class Bridge(ThreadingHTTPServer):
     daemon_threads = True
     request_queue_size = 32
 
-    def __init__(self, address, transport, assets, pins, policy, tls_context):
+    def __init__(self, address, transport, assets, pins, policy, tls_context, faucet_port=None):
         if not ipaddress.ip_address(address[0]).is_loopback:
             raise ValueError("bridge must bind to loopback behind the controlled HTTPS proxy")
         self.transport, self.assets, self.pins = transport, assets, pins
         self.policy, self.tls_context = policy, tls_context
-        self.slots = threading.BoundedSemaphore(32)
+        self.faucet_port = faucet_port
+        # Reserve bounded HTTP capacity to return busy while 32 calls run.
+        self.slots = threading.BoundedSemaphore(40)
+        self.work_slots = threading.BoundedSemaphore(32)
+        self.faucet_slots = threading.BoundedSemaphore(2)
         self.chain_slots = threading.BoundedSemaphore(4)
         super().__init__(address, Handler)
 
@@ -85,6 +90,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Vary", "Origin")
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Access-Control-Expose-Headers", "Retry-After")
         if getattr(self, "cors_origin", None):
             self.send_header("Access-Control-Allow-Origin", self.cors_origin)
         super().end_headers()
@@ -94,6 +100,8 @@ class Handler(BaseHTTPRequestHandler):
         self.connection.settimeout(15)
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
+        if status == 429 and body.get("code") == "overloaded":
+            self.send_header("Retry-After", "2")
         self.send_header("Content-Length", str(len(raw)))
         self.end_headers()
         self.wfile.write(raw)
@@ -134,7 +142,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", "0")
         self.send_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Zark-Browser-Demo")
-        self.send_header("Access-Control-Max-Age", "60")
+        self.send_header("Access-Control-Max-Age", "600")
         self.end_headers()
 
     def asset_name(self):
@@ -189,6 +197,18 @@ class Handler(BaseHTTPRequestHandler):
                 or self.headers.get_all("Content-Type", []) not in
                 (["application/json"], ["application/json; charset=utf-8"])):
             return self.reply(403, {"code": "browser_request_denied", "error": "Invalid browser headers"})
+        if not self.server.work_slots.acquire(blocking=False):
+            return self.busy()
+        try:
+            self.post_admitted()
+        finally:
+            self.server.work_slots.release()
+
+    def busy(self):
+        self.reply(429, {"code": "overloaded", "retryable": True,
+                         "error": "Server busy. Retry the same saved request shortly."})
+
+    def post_admitted(self):
         route = ROUTES[self.path]
         try:
             body = self.read_body()
@@ -202,16 +222,40 @@ class Handler(BaseHTTPRequestHandler):
                 result = self.status()
             elif route == "chain":
                 if not self.server.chain_slots.acquire(blocking=False):
-                    return self.reply(429, {"code": "bridge_busy", "error": "Bridge busy; resume the saved operation later"})
+                    return self.busy()
                 try:
                     result = self.server.transport.chain_call(body)
                 finally:
                     self.server.chain_slots.release()
+            elif route == "faucet":
+                if self.server.faucet_port is None:
+                    return self.reply(503, {"code": "faucet_disabled", "error": "Browser faucet is not enabled yet."})
+                # Only the controlled loopback proxy supplies this header. It
+                # overwrites client headers; never accept an IP in the body.
+                forwarded = self.headers.get_all("X-Zark-Client-IP", [])
+                try:
+                    if len(forwarded) != 1 or not ipaddress.ip_address(self.client_address[0]).is_loopback:
+                        raise ValueError("missing proxy address")
+                    client = str(ipaddress.ip_address(forwarded[0]))
+                except ValueError:
+                    return self.reply(400, {"code": "invalid_client_ip", "error": "Invalid proxy client address"})
+                if not self.server.faucet_slots.acquire(blocking=False):
+                    return self.busy()
+                try:
+                    status, result = faucet_call(self.server.faucet_port, body, client)
+                finally:
+                    self.server.faucet_slots.release()
+                return self.reply(status, result)
             else:
                 protocol = "statechain/10" if route == "signer" else "zark-mail/1"
                 result = self.server.transport.exchange(body, protocol)
         except (OSError, ValueError, RecursionError, http.client.HTTPException):
             return self.reply(503, SAFE_ERROR)
+        if (isinstance(result, dict) and result.get("ok") is False
+                and isinstance(result.get("error"), dict)
+                and result["error"].get("code") == "overloaded"
+                and result["error"].get("retryable") is True):
+            return self.busy()
         self.reply(200, result)
 
     def status(self):
@@ -224,6 +268,11 @@ class Handler(BaseHTTPRequestHandler):
         try:
             reply = self.server.transport.exchange({"version": 1, "method": "GET", "path": "/health", "body": None},
                                                    "zark-mail/1", timeout=5)
+            if (isinstance(reply, dict) and reply.get("ok") is False
+                    and isinstance(reply.get("error"), dict)
+                    and reply["error"].get("code") == "overloaded"):
+                return {"deployment": self.server.pins["name"], "assetsReady": assets_ready,
+                        "connected": False, "busy": True, "issues": issues}
             connected = isinstance(reply, dict) and reply.get("ok") is True
         except (OSError, ValueError):
             pass
@@ -238,11 +287,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("pins", "inventory", "suite", "signer-certificate", "chain-certificate", "certificate", "private-key"):
         parser.add_argument("--" + name, type=Path, required=True)
+    parser.add_argument("--faucet-port", type=int, help="Enable sponsored deposits through this loopback faucet port")
     parser.add_argument("--port", type=int, default=7450)
     parser.add_argument("--origin", default="https://zark.lx.dev")
     parser.add_argument("--host", default="zark-signer.lx.dev")
     parser.add_argument("--check-config", action="store_true")
     args = parser.parse_args()
+    if args.faucet_port is not None and not 1 <= args.faucet_port <= 65535:
+        raise ValueError("invalid faucet port")
     pins = decode_json(args.pins.read_bytes())
     if (pins["version"] != 10 or pins["owner_limit"] != 8 or pins["signer"]["port"] != 7448
             or pins["chain"]["port"] != 443 or pins["signer"]["server_name"] != "signer.internal"
@@ -256,7 +308,7 @@ def main():
         print(encode_json({"configuration_valid": True, "deployment": pins["deployment"], "suite": pins["suite"],
                            "public_assets": len(assets.hashes)}).decode())
         return
-    with Bridge(("127.0.0.1", args.port), transport, assets, pins, policy, context) as server:
+    with Bridge(("127.0.0.1", args.port), transport, assets, pins, policy, context, args.faucet_port) as server:
         # Swap only the context for future handshakes. Renewal must not kill
         # requests whose native signer operation may already have committed.
         def reload_tls(_signum, _frame):

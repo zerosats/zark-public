@@ -30,7 +30,7 @@ def main():
         "pins.json": pins_path, "inventory.json": inventory,
         "signer-certificate.pem": signer_cert, "chain-certificate.pem": chain_cert,
     }
-    for name in ("browser_policy.py", "wallet_assets.py", "wallet_transport.py", "wallet_bridge.py", "test_wallet_bridge.py",
+    for name in ("browser_policy.py", "wallet_assets.py", "wallet_transport.py", "wallet_bridge.py", "wallet_faucet.py", "test_wallet_bridge.py",
                  "wallet-bridge.nginx.conf", "zark-wallet-bridge.service", "wallet-bridge-run.sh", "wallet-bridge-tls-reload.sh"):
         files["services/" + name] = ROOT / "services" / name
     for name in ("install-wallet-bridge.sh", "check-wallet-bridge.py"):

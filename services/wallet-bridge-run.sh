@@ -1,5 +1,10 @@
 #!/bin/sh
 set -eu
+# Opt in only when the existing loopback faucet is available. No credentials
+# belong in this file; the faucet service retains its restricted RPC account.
+if [ -f /etc/zark-wallet-bridge/faucet-port ]; then
+  set -- --faucet-port "$(cat /etc/zark-wallet-bridge/faucet-port)" "$@"
+fi
 exec /usr/bin/python3 -B /opt/zark-wallet-bridge/services/wallet_bridge.py \
   --port "$(cat /etc/zark-wallet-bridge/port)" \
   --pins /opt/zark-wallet-bridge/pins.json \
