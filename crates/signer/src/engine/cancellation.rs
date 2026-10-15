@@ -1,9 +1,7 @@
 //! Pre-issuance cancellation preserves the live owner and retires only provisional secrets.
 #[cfg(test)]
 use super::tests;
-use super::{
-    Digest, Engine, Phase, Request, Result, Store, Value, ensure, json, persistence, sender,
-};
+use super::{Digest, Engine, Phase, Request, Result, Value, ensure, json, persistence, sender};
 use anyhow::Context;
 use zeroize::Zeroize;
 
@@ -15,7 +13,7 @@ impl Engine {
         guard: &dyn Fn() -> Result<()>,
     ) -> Result<Value> {
         let _lock = persistence::lock_guarded(&self.db, &self.checkpoint, guard)?;
-        let mut store = Store::open(&self.db, self.config)?;
+        let mut store = self.store()?;
         let floor = store.verify_checkpoint(&self.checkpoint)?;
         if store.operation_cancelled(&request.context.coin, &request.context.operation)? {
             guard()?;

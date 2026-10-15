@@ -22,6 +22,9 @@ pub struct HostedConfig {
     /// Independent browser HTTPS certificate; the native certificate/pin stays unchanged.
     #[serde(default)]
     pub browser: Option<super::browser::Config>,
+    /// Admission only; lowering these never invalidates existing stored coins.
+    #[serde(default)]
+    pub storage_limits: crate::engine::CapacityLimits,
     pub network_workers: usize,
     pub proof_workers: usize,
     pub queue_capacity: usize,
@@ -32,6 +35,8 @@ pub struct PublicAccess {
     pub max_inflight: usize,
     pub requests_per_minute: usize,
     pub allocations_per_minute: usize,
+    #[serde(default = "default_peer_allocations")]
+    pub peer_allocations_per_minute: usize,
     #[serde(default = "default_peer_inflight")]
     pub peer_max_inflight: usize,
     #[serde(default = "default_peer_rate")]
@@ -42,6 +47,9 @@ fn default_peer_inflight() -> usize {
 }
 fn default_peer_rate() -> usize {
     60
+}
+fn default_peer_allocations() -> usize {
+    12
 }
 
 #[derive(Clone, Deserialize)]
@@ -68,6 +76,7 @@ impl HostedConfig {
     }
     fn validate(&self) -> Result<()> {
         ensure!(self.version == 10, "private hosted version");
+        self.storage_limits.validate()?;
         if let Some(mail) = &self.messaging {
             mail.validate()?;
         }
@@ -91,6 +100,7 @@ impl HostedConfig {
                     && (1..=600).contains(&public.requests_per_minute)
                     && (1..=60).contains(&public.allocations_per_minute)
                     && public.allocations_per_minute <= public.requests_per_minute
+                    && (1..=60).contains(&public.peer_allocations_per_minute)
                     && (1..=8).contains(&public.peer_max_inflight)
                     && (1..=600).contains(&public.peer_requests_per_minute),
                 "public admission capacity"

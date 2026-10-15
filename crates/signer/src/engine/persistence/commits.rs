@@ -1,9 +1,8 @@
 //! Single-operation commits and frozen readiness records; publication remains a separate durable step.
 use super::{
-    Batch, BatchManifest, BatchPhase, Checkpoint, Coin, Command, Context, Digest, MAX_BATCHES,
-    MAX_COINS, MAX_RECORD, MAX_REQUESTS, OptionalExtension, Request, Result, Store,
-    TransactionBehavior, Value, Zeroizing, advance, ensure, hash, json, params, response_budget,
-    write_batch,
+    Batch, BatchManifest, BatchPhase, Checkpoint, Coin, Command, Context, Digest, MAX_RECORD,
+    MAX_REQUESTS, OptionalExtension, Request, Result, Store, TransactionBehavior, Value, Zeroizing,
+    advance, ensure, hash, json, params, response_budget, write_batch,
 };
 
 impl Store {
@@ -53,7 +52,7 @@ impl Store {
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
         let count: u64 = tx.query_row("SELECT count(*) FROM coins", [], |r| r.get(0))?;
-        ensure!(count < MAX_COINS, "private coin capacity reached");
+        ensure!(count < self.limits.coins, "private coin capacity reached");
         let body = Zeroizing::new(serde_json::to_string(coin)?);
         let sum = hash(&[body.as_bytes()]);
         tx.execute(
@@ -76,7 +75,7 @@ impl Store {
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
         let count: u64 = tx.query_row("SELECT count(*) FROM coins", [], |r| r.get(0))?;
-        ensure!(count < MAX_COINS, "private coin capacity reached");
+        ensure!(count < self.limits.coins, "private coin capacity reached");
         let body = Zeroizing::new(serde_json::to_string(coin)?);
         let sum = hash(&[body.as_bytes()]);
         let response = Zeroizing::new(serde_json::to_string(response)?);
@@ -201,7 +200,7 @@ impl Store {
                 value
             } else {
                 let count: u64 = tx.query_row("SELECT count(*) FROM batches", [], |r| r.get(0))?;
-                ensure!(count < MAX_BATCHES, "batch capacity reached");
+                ensure!(count < self.limits.batches, "batch capacity reached");
                 Batch {
                     manifest: manifest.clone(),
                     joined: vec![false; manifest.members.len()],

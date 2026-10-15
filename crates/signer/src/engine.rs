@@ -6,6 +6,7 @@
 mod batch;
 mod bootstrap;
 mod cancellation;
+mod capacity;
 mod persistence;
 mod planning;
 mod responses;
@@ -58,6 +59,7 @@ use zark_protocol::{
 };
 use zeroize::Zeroize;
 
+pub use capacity::CapacityLimits;
 use persistence::{BatchPhase, Checkpoint, Store};
 pub use zark_protocol::wire::{Command, Request};
 
@@ -103,6 +105,7 @@ pub struct Engine {
     checkpoint: PathBuf,
     policy: LineagePolicy,
     config: Digest,
+    capacity_limits: CapacityLimits,
     verifier: Proofs,
     admission: Arc<dyn Admission>,
     batch_tip: Arc<dyn BatchTip>,
@@ -114,6 +117,32 @@ pub struct Engine {
     batch_clock: Arc<std::sync::atomic::AtomicU64>,
 }
 impl Engine {
+    /// Limits apply only to new records. Existing authority, retries and recovery
+    /// remain usable even if the operator lowers a limit below current usage.
+    pub fn with_capacity_limits(mut self, limits: CapacityLimits) -> Result<Self> {
+        limits.validate()?;
+        self.capacity_limits = limits;
+        Ok(self)
+    }
+
+    fn store(&self) -> Result<Store> {
+        Store::open(&self.db, self.config)?.with_limits(self.capacity_limits)
+    }
+
+    /// Local operator status only; no public protocol or signing state changes.
+    pub fn storage_usage(&self) -> Result<Value> {
+        let _lock = persistence::lock(&self.db, &self.checkpoint)?;
+        let store = self.store()?;
+        store.verify_checkpoint(&self.checkpoint)?;
+        let (coins, batches) = store.counts()?;
+        Ok(
+            json!({"coins":coins,"coin_limit":self.capacity_limits.coins,
+            "batches":batches,"batch_limit":self.capacity_limits.batches,
+            "near_capacity":coins >= self.capacity_limits.coins.saturating_mul(4).div_ceil(5)
+                || batches >= self.capacity_limits.batches.saturating_mul(4).div_ceil(5)}),
+        )
+    }
+
     /// Public deployment identity for the isolated mailbox service.
     pub fn deployment(&self) -> Digest {
         self.policy.deployment
@@ -224,6 +253,7 @@ impl Engine {
             checkpoint: checkpoint.into(),
             policy,
             config,
+            capacity_limits: CapacityLimits::default(),
             verifier,
             admission,
             batch_tip,
@@ -235,7 +265,7 @@ impl Engine {
             batch_clock: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         };
         let _lock = persistence::lock(&engine.db, &engine.checkpoint)?;
-        let store = Store::open(&engine.db, engine.config)?;
+        let store = engine.store()?;
         store.validate(&engine.policy)?;
         if repair {
             store.repair_checkpoint(&engine.checkpoint)?;
@@ -248,7 +278,7 @@ impl Engine {
     /// Requests never repair a mismatch automatically or roll authority backward.
     pub fn repair_interrupted_checkpoint(&self) -> Result<()> {
         let _lock = persistence::lock(&self.db, &self.checkpoint)?;
-        let store = Store::open(&self.db, self.config)?;
+        let store = self.store()?;
         store.validate(&self.policy)?;
         store.repair_checkpoint(&self.checkpoint)
     }
@@ -296,7 +326,7 @@ impl Engine {
             let _timing =
                 zark_protocol::timing::Span::new(zark_protocol::timing::Phase::SignerPlan);
             let _lock = persistence::lock_guarded(&self.db, &self.checkpoint, &guard)?;
-            let store = Store::open(&self.db, self.config)?;
+            let store = self.store()?;
             let floor = store.verify_checkpoint(&self.checkpoint)?;
             let saved = store.coin(&request.context.coin)?;
             if saved.is_none() && matches!(request.command, Command::BootstrapAllocate {}) {
@@ -384,7 +414,7 @@ impl Engine {
         self.trip(tests::Fault::AfterVerification)?;
         let _timing = zark_protocol::timing::Span::new(zark_protocol::timing::Phase::SignerCommit);
         let _lock = persistence::lock_guarded(&self.db, &self.checkpoint, &guard)?;
-        let mut store = Store::open(&self.db, self.config)?;
+        let mut store = self.store()?;
         let floor = store.verify_checkpoint(&self.checkpoint)?;
         let (current, current_revision) = store
             .coin(&request.context.coin)?

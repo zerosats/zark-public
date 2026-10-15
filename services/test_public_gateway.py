@@ -15,14 +15,17 @@ from browser_policy import BrowserPolicy
 
 class Core(BaseHTTPRequestHandler):
     requests = []
+    raw_requests = []
 
     def log_message(self, *args):
         pass
 
     def do_POST(self):
         body = self.rfile.read(int(self.headers["Content-Length"]))
-        self.requests.append((self.headers.get("Authorization"), json.loads(body)))
-        request = json.loads(body)
+        self.raw_requests.append(body)
+        # Model Core's first-member lookup, not Python's default last-member lookup.
+        request = json.loads(body, object_pairs_hook=lambda items: dict(reversed(items)))
+        self.requests.append((self.headers.get("Authorization"), request))
         value = {"getblockchaininfo": {"chain": "signet", "blocks": 200, "bestblockhash": "44" * 32},
                  "getrawtransaction": {"confirmations": 100}, "getblockhash": "aa" * 32,
                  "gettxout": None}.get(request["method"])
@@ -74,6 +77,7 @@ class GatewayTests(unittest.TestCase):
         ]}))
         self.root, self.manifest = root, manifest
         Core.requests = []
+        Core.raw_requests = []
         self.core = ThreadingHTTPServer(("127.0.0.1", 0), Core)
         running(self.core)
         self.addCleanup(self.core.server_close)
@@ -118,6 +122,46 @@ class GatewayTests(unittest.TestCase):
         denied = json.dumps({"jsonrpc": "1.0", "id": 2, "method": "stop", "params": []})
         self.assertEqual(self.request("POST", "/rpc", denied)[0], 403)
         self.assertEqual(len(Core.requests), 1)
+
+    def test_duplicate_rpc_members_never_reach_core(self):
+        self.enable_browser()
+        bodies = []
+        for field, first, second in [
+                ("method", '"stop"', '"getblockchaininfo"'),
+                ("params", '["unexpected"]', '[]'),
+                ("id", '1', '2'),
+                ("jsonrpc", '"1.0"', '"2.0"')]:
+            for left, right in [(first, second), (second, first)]:
+                base = '' if field == "method" else '"method":"getblockchaininfo",'
+                bodies.append('{' + base + f'"{field}":{left},"{field}":{right}' + '}')
+        observation_params = json.dumps(["1", "66" * 32, "0", "77" * 32, "2"])
+        bodies.extend([
+            r'{"method":"stop","m\u0065thod":"getblockchaininfo"}',
+            '{"method":"getblockchaininfo","params":[{"x":1,"x":2}]}',
+            '{"method":"zark_observe","params":' + observation_params + ',"params":' + observation_params + '}',
+        ])
+        for body in bodies:
+            with self.subTest(body=body):
+                self.assertEqual(self.request("POST", "/rpc", body)[0], 400)
+                status, headers, _ = self.browser_request("POST", "/rpc", body)
+                self.assertEqual(status, 400)
+                self.assertEqual(headers["Access-Control-Allow-Origin"], "https://wallet.example.org")
+                self.assertEqual(Core.raw_requests, [])
+
+    def test_unique_rpc_members_preserve_exact_bytes_and_numeric_values(self):
+        self.enable_browser()
+        bodies = [
+            b' { "params" : [], "id" : "native", "m\\u0065thod" : "getblockchaininfo" } ',
+            b'{"method":"sendrawtransaction","params":["00",0.1234567890123456789],"id":9007199254740993}',
+            b'{"jsonrpc":"2.0","method":"gettxout","params":["aa",0,true],"id":null}',
+            b'{"method":"testmempoolaccept","params":[["00"],1e400]}',
+        ]
+        for body in bodies:
+            with self.subTest(body=body):
+                self.assertEqual(self.request("POST", "/rpc", body)[0], 200)
+                self.assertEqual(Core.raw_requests[-1], body)
+                self.assertEqual(self.browser_request("POST", "/rpc", body)[0], 200)
+                self.assertEqual(Core.raw_requests[-1], body)
 
     def test_faucet_is_forwarded_with_gateway_client_address(self):
         self.assertEqual(self.request("GET", "/faucet")[0], 404)

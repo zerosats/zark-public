@@ -38,6 +38,15 @@ MAX_FAUCET_RESPONSE = 64 * 1024
 ASSET_NAME = re.compile(r"[A-Za-z0-9_./-]+\Z")
 
 
+def unique_members(items):
+    result = {}
+    for key, value in items:
+        if key in result:
+            raise ValueError("duplicate JSON member")
+        result[key] = value
+    return result
+
+
 def public_assets(root: Path, manifest_path: Path):
     manifest = json.loads(manifest_path.read_text())
     if manifest.get("version") != 1 or not isinstance(manifest.get("files"), list):
@@ -291,7 +300,9 @@ class Handler(BaseHTTPRequestHandler):
         if body is None:
             return
         try:
-            request = json.loads(body)
+            # Python keeps the last duplicate member; Core uses the first.
+            # Reject ambiguity before authorizing, preserving valid RPC bytes.
+            request = json.loads(body, object_pairs_hook=unique_members)
             if (not isinstance(request, dict)
                     or request.get("method") not in RPC_METHODS | {"zark_observe"}
                     or not isinstance(request.get("params", []), list)):

@@ -150,6 +150,8 @@ pub(super) fn classify(error: &anyhow::Error) -> Value {
         "private credential rejected" => failure("unauthorized", false),
         "private admission capacity"
         | "private admission unavailable"
+        | "private coin capacity reached"
+        | "batch capacity reached"
         | "checkpoint busy: admission capacity"
         | "checkpoint busy: admission deadline"
         | "checkpoint busy: lock deadline"

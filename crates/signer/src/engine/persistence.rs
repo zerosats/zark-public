@@ -6,6 +6,10 @@ mod commits;
 mod queries;
 mod validation;
 
+use super::{
+    CapacityLimits,
+    capacity::{MAX_BATCHES, MAX_COINS},
+};
 use super::{Coin, Command, Digest, LineagePolicy, Purpose, Request, TransferContext};
 use anyhow::{Context, Result, ensure};
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
@@ -23,10 +27,8 @@ use zeroize::Zeroizing;
 
 const APP_ID: u32 = 0x5a41524b;
 const SCHEMA_VERSION: u32 = 13;
-const MAX_COINS: u64 = 1000;
 const MAX_REQUESTS: u64 = 256;
 const MAX_RECORD: usize = 64 * 1024;
-const MAX_BATCHES: u64 = 10_000;
 type CachedResponseRow = (Vec<u8>, Vec<u8>, String, Vec<u8>);
 
 fn response_budget(command: &Command) -> u64 {
@@ -127,8 +129,14 @@ pub(super) fn lock_guarded(
 
 pub(super) struct Store {
     connection: Connection,
+    limits: CapacityLimits,
 }
 impl Store {
+    pub fn with_limits(mut self, limits: CapacityLimits) -> Result<Self> {
+        limits.validate()?;
+        self.limits = limits;
+        Ok(self)
+    }
     pub fn open(path: &Path, config: Digest) -> Result<Self> {
         let connection = Connection::open(path)?;
         fs::set_permissions(path, fs::Permissions::from_mode(0o600))?;
@@ -185,7 +193,10 @@ impl Store {
                 "PRAGMA synchronous=FULL; PRAGMA secure_delete=ON; PRAGMA foreign_keys=ON;",
             )?;
         }
-        Ok(Self { connection })
+        Ok(Self {
+            connection,
+            limits: CapacityLimits::default(),
+        })
     }
 }
 fn write_batch(tx: &rusqlite::Transaction<'_>, batch: &Batch) -> Result<()> {

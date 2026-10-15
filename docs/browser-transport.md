@@ -74,7 +74,12 @@ restart, database change, proof regeneration or wallet-state reset is involved.
 The package contains only an explicit list of source files, pins, public
 certificates and verified suite files; no private key is copied from the wallet.
 
-The installer uses the pinned `acme.sh` 3.1.6 release and explicitly selects
+The installer uses `acme.sh` 3.1.6 pinned to a source commit and SHA-256 archive
+digest in `scripts/prepare-acme-client.py`. It checks the digest before extracting
+into a fresh private directory or executing the client. Archive changes fail
+closed and require a reviewed pin update. The renewal service disables client
+self-upgrades (`ACME_PACKAGED=1`); client updates require operator review.
+The installer explicitly selects
 Let's Encrypt, with no contact email, manual website signup, Certbot, shell
 profile changes or default cron installation. Standalone ACME validation uses
 port 80; keep it available for the installed daily systemd renewal timer. The
@@ -195,6 +200,33 @@ privately admitted clients; a hosted wallet must not embed a shared operator
 credential in its public JS. Self-service starts require the existing
 `public_access` hosting policy. Continuations/recovery retain their existing
 frozen-session authorization even after hosting credential expiry/revocation.
+
+The hosted config also accepts `storage_limits: {"coins":10000,"batches":10000}`.
+Both defaults and hard maxima are 10,000. These are lifetime admission ceilings,
+not active-coin counts: allocation keys, completed coins, batch records and replay
+responses are retained. Limits apply when creating new records, not when reopening
+the database, retrying an exact request or completing/recovering existing work.
+Lowering a ceiling below current usage therefore pauses new records without
+invalidating the checkpoint. Storage limits take effect on signer restart; the
+startup journal prints `zark_storage_usage`, including an 80% capacity warning flag.
+Older signer binaries with the former 1,000-coin ceiling cannot reopen a database
+that has grown past that ceiling; do not roll back the binary after that point.
+
+`public_access.peer_allocations_per_minute` defaults to 12 (range 1–60), alongside
+the existing global `allocations_per_minute` limit. It limits allocation attempts,
+including exact retries, for up to the existing 60-second rate window. Other
+commands do not consume this bucket. All browser wallets using the Python bridge
+share its socket IP and therefore this allowance; tune it for shared venue traffic.
+No new wallet credential or request field is needed. Capacity refusals use the
+existing retryable `overloaded` response so clients retain their saved request.
+
+These controls mitigate registry exhaustion; they do not make public allocation
+unlimited or prevent a sustained distributed fill. Message replay guards and
+mailbox/offer tombstones are not deleted: their relative TTLs would otherwise let
+old requests revive. The existing mailbox, offer, message-history and batch
+lifetime limits still need a separate reclamation design. Checkpoint work grows
+with retained history; 10,000 registrations is a storage ceiling, not a throughput
+guarantee for 10,000 fully active wallets.
 
 Successful signer response:
 

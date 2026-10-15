@@ -55,6 +55,7 @@ pub(super) fn queue_for<'a, T>(
 pub(super) struct Usage {
     inflight: usize,
     count: usize,
+    allocations: usize,
     window: Option<Instant>,
 }
 pub(super) type UsageMap = Arc<Mutex<BTreeMap<String, Usage>>>;
@@ -90,6 +91,7 @@ pub(super) fn admit(usage: &UsageMap, key: String, inflight: usize, rate: usize)
     {
         u.window = Some(Instant::now());
         u.count = 0;
+        u.allocations = 0;
     }
     ensure!(
         u.inflight < inflight && u.count < rate,
@@ -101,6 +103,20 @@ pub(super) fn admit(usage: &UsageMap, key: String, inflight: usize, rate: usize)
         key,
         usage: usage.clone(),
     })
+}
+
+fn admit_peer_allocation(usage: &UsageMap, peer: std::net::IpAddr, rate: usize) -> Result<()> {
+    let mut all = usage
+        .lock()
+        .map_err(|_| anyhow::anyhow!("private admission unavailable"))?;
+    // The ordinary peer permit is already held, so this entry cannot be pruned.
+    // Reuse it rather than creating another entry for a rejected allocation.
+    let u = all
+        .get_mut(&format!("public:peer:{}", peer.to_canonical()))
+        .ok_or_else(|| anyhow::anyhow!("private admission unavailable"))?;
+    ensure!(u.allocations < rate, "private admission capacity");
+    u.allocations += 1;
+    Ok(())
 }
 pub(super) fn guard(
     path: &Path,
@@ -143,6 +159,10 @@ pub(super) fn admit_start(
             60,
         )?);
         if matches!(request.command, Command::BootstrapAllocate {}) {
+            // Keep global request admission first, but charge this peer before
+            // the global allocation budget so it cannot consume other peers'
+            // allocation allowance once its own budget is exhausted.
+            admit_peer_allocation(usage, peer, public.peer_allocations_per_minute)?;
             permits.push(admit(
                 usage,
                 "public:allocations".into(),
@@ -160,4 +180,29 @@ pub(super) fn admit_start(
         )?);
     }
     Ok(permits)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn allocation_budget_resets_with_the_existing_peer_window() -> Result<()> {
+        let usage: UsageMap = Arc::default();
+        let peer = "127.0.0.1".parse()?;
+        let key = "public:peer:127.0.0.1".to_owned();
+        let held = admit(&usage, key.clone(), 2, 60)?;
+        admit_peer_allocation(&usage, peer, 1)?;
+        assert!(admit_peer_allocation(&usage, peer, 1).is_err());
+        usage.lock().unwrap().get_mut(&key).unwrap().window =
+            Some(Instant::now() - Duration::from_secs(61));
+        // The original permit keeps the entry alive, so this tests the window
+        // reset itself, not removal and recreation of an idle entry.
+        let next = admit(&usage, key, 2, 60)?;
+        admit_peer_allocation(&usage, peer, 1)?;
+        assert!(admit_peer_allocation(&usage, peer, 1).is_err());
+        assert_eq!(usage.lock().unwrap().len(), 1);
+        drop((held, next));
+        Ok(())
+    }
 }

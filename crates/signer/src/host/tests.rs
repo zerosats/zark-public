@@ -7,6 +7,8 @@ fn lock_contention_is_retryable_but_persistence_failures_are_not() {
         "checkpoint busy: admission deadline",
         "checkpoint busy: lock deadline",
         "proof verification busy: lock deadline",
+        "private coin capacity reached",
+        "batch capacity reached",
     ] {
         assert_eq!(
             classify(&anyhow::anyhow!(message)),
@@ -197,11 +199,145 @@ fn public_configuration_limits_are_validated() -> Result<()> {
         ("peer_max_inflight", 9),
         ("peer_requests_per_minute", 0),
         ("peer_requests_per_minute", 601),
+        ("peer_allocations_per_minute", 0),
+        ("peer_allocations_per_minute", 61),
     ] {
         let mut changed = original.clone();
         changed["public_access"][field] = json!(value);
         assert!(HostedConfig::parse(&serde_json::to_vec(&changed)?).is_err());
     }
+    let defaults = HostedConfig::parse(&serde_json::to_vec(&original)?)?;
+    assert_eq!(defaults.storage_limits.coins, 10_000);
+    assert_eq!(defaults.storage_limits.batches, 10_000);
+    assert_eq!(
+        defaults.public_access.unwrap().peer_allocations_per_minute,
+        12
+    );
+    for (field, value) in [
+        ("coins", 0),
+        ("coins", 10_001),
+        ("batches", 0),
+        ("batches", 10_001),
+    ] {
+        let mut changed = original.clone();
+        changed["storage_limits"] = json!({"coins":10000,"batches":10000});
+        changed["storage_limits"][field] = json!(value);
+        assert!(HostedConfig::parse(&serde_json::to_vec(&changed)?).is_err());
+    }
+    let mut changed = original.clone();
+    changed["storage_limits"] = json!({"coins":2,"batches":1});
+    let config = HostedConfig::parse(&serde_json::to_vec(&changed)?)?;
+    assert_eq!(config.storage_limits.coins, 2);
+    assert_eq!(config.storage_limits.batches, 1);
+    Ok(())
+}
+
+#[test]
+fn allocation_peer_limit_cannot_be_rotated_or_spend_another_peers_budget() -> Result<()> {
+    let config = HostedConfig::parse(&serde_json::to_vec(&json!({
+        "version":10,"listen":"127.0.0.1:1","certificate":"unused","private_key":"unused",
+        "network_workers":1,"proof_workers":1,"queue_capacity":1,
+        "public_access":{"max_inflight":8,"requests_per_minute":60,"allocations_per_minute":3,
+            "peer_allocations_per_minute":1,"peer_requests_per_minute":60}
+    }))?)?;
+    let key = SigningKey::from_bytes(&[9; 32])?;
+    let mut context = TransferContext {
+        start_revision: 0,
+        scope: zark_protocol::handoff::OperationScope::Single,
+        deployment: [1; 32],
+        coin: [2; 32],
+        previous_state: [3; 32],
+        operation: [4; 32],
+        recipient_claim: [5; 32],
+        session_auth: key.verifying_key().to_bytes().into(),
+    };
+    let request = Request::sign(context.clone(), Command::BootstrapAllocate {}, &key)?;
+    let usage: UsageMap = Arc::default();
+    drop(admit_start(
+        &config,
+        &usage,
+        &request,
+        None,
+        "127.0.0.1".parse()?,
+    )?);
+    let other = SigningKey::from_bytes(&[10; 32])?;
+    context.session_auth = other.verifying_key().to_bytes().into();
+    context.coin = [8; 32];
+    let rotated = Request::sign(context.clone(), Command::BootstrapAllocate {}, &other)?;
+    for peer in ["127.0.0.1", "::ffff:127.0.0.1"] {
+        assert!(admit_start(&config, &usage, &rotated, None, peer.parse()?).is_err());
+    }
+    drop(admit_start(
+        &config,
+        &usage,
+        &rotated,
+        None,
+        "127.0.0.2".parse()?,
+    )?);
+    drop(admit_start(
+        &config,
+        &usage,
+        &rotated,
+        None,
+        "127.0.0.3".parse()?,
+    )?);
+    assert!(admit_start(&config, &usage, &rotated, None, "127.0.0.4".parse()?).is_err());
+    // Hitting the allocation-only budget does not consume a transfer-start slot.
+    let transfer = Request::sign(
+        context,
+        Command::Reserve {
+            owner_authorization: placeholder_owner_authorization(),
+        },
+        &other,
+    )?;
+    drop(admit_start(
+        &config,
+        &usage,
+        &transfer,
+        None,
+        "127.0.0.1".parse()?,
+    )?);
+    Ok(())
+}
+
+#[test]
+fn globally_rejected_allocations_do_not_fill_peer_bookkeeping() -> Result<()> {
+    let config = HostedConfig::parse(&serde_json::to_vec(&json!({
+        "version":10,"listen":"127.0.0.1:1","certificate":"unused","private_key":"unused",
+        "network_workers":1,"proof_workers":1,"queue_capacity":1,
+        "public_access":{"max_inflight":1,"requests_per_minute":60,"allocations_per_minute":3}
+    }))?)?;
+    let key = SigningKey::from_bytes(&[9; 32])?;
+    let request = Request::sign(
+        TransferContext {
+            start_revision: 0,
+            scope: zark_protocol::handoff::OperationScope::Single,
+            deployment: [1; 32],
+            coin: [2; 32],
+            previous_state: [3; 32],
+            operation: [4; 32],
+            recipient_claim: [5; 32],
+            session_auth: key.verifying_key().to_bytes().into(),
+        },
+        Command::BootstrapAllocate {},
+        &key,
+    )?;
+    let usage: UsageMap = Arc::default();
+    let held = admit_start(&config, &usage, &request, None, "127.0.0.1".parse()?)?;
+    let before = usage.lock().unwrap().len();
+    for suffix in 1..=1024u128 {
+        let peer = std::net::Ipv6Addr::from((0x2001_0db8u128 << 96) | suffix).into();
+        assert!(admit_start(&config, &usage, &request, None, peer).is_err());
+    }
+    assert_eq!(usage.lock().unwrap().len(), before);
+    drop(held);
+    drop(admit_start(
+        &config,
+        &usage,
+        &request,
+        None,
+        "127.0.0.2".parse()?,
+    )?);
     Ok(())
 }
 

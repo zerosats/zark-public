@@ -5,6 +5,15 @@ use super::{
 };
 
 impl Store {
+    pub fn counts(&self) -> Result<(u64, u64)> {
+        Ok((
+            self.connection
+                .query_row("SELECT count(*) FROM coins", [], |r| r.get(0))?,
+            self.connection
+                .query_row("SELECT count(*) FROM batches", [], |r| r.get(0))?,
+        ))
+    }
+
     pub fn coin(&self, id: &Digest) -> Result<Option<(Coin, u64)>> {
         let value: Option<(u64, String, Vec<u8>)> = self
             .connection

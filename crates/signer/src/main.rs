@@ -424,7 +424,8 @@ fn run(args: Args) -> Result<()> {
             control,
             origin,
         )?
-    };
+    }
+    .with_capacity_limits(hosted.storage_limits)?;
     if args.repair_interrupted_checkpoint {
         println!(
             "{}",
@@ -432,6 +433,7 @@ fn run(args: Args) -> Result<()> {
         );
         return Ok(());
     }
+    eprintln!("zark_storage_usage {}", engine.storage_usage()?);
     host::serve(&config.hosted, Arc::new(engine))
 }
 

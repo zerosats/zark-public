@@ -33,7 +33,7 @@ def main():
     for name in ("browser_policy.py", "wallet_assets.py", "wallet_transport.py", "wallet_bridge.py", "wallet_faucet.py", "test_wallet_bridge.py",
                  "wallet-bridge.nginx.conf", "zark-wallet-bridge.service", "wallet-bridge-run.sh", "wallet-bridge-tls-reload.sh"):
         files["services/" + name] = ROOT / "services" / name
-    for name in ("install-wallet-bridge.sh", "check-wallet-bridge.py"):
+    for name in ("install-wallet-bridge.sh", "prepare-acme-client.py", "check-wallet-bridge.py"):
         files["scripts/" + name] = ROOT / "scripts" / name
     for name in assets.hashes:
         files[name] = args.wallet / "demo-assets" / name

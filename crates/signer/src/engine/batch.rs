@@ -82,7 +82,7 @@ impl Engine {
         };
         let (revision, generation, spec) = {
             let _lock = persistence::lock_guarded(&self.db, &self.checkpoint, guard)?;
-            let store = Store::open(&self.db, self.config)?;
+            let store = self.store()?;
             let floor = store.verify_checkpoint(&self.checkpoint)?;
             let batch = store.batch(&manifest.id)?.context("unknown batch")?;
             ensure!(batch.manifest == *manifest, "batch manifest changed");
@@ -131,7 +131,7 @@ impl Engine {
         #[cfg(test)]
         self.trip(tests::Fault::AfterVerification)?;
         let _lock = persistence::lock_guarded(&self.db, &self.checkpoint, guard)?;
-        let mut store = Store::open(&self.db, self.config)?;
+        let mut store = self.store()?;
         let floor = store.verify_checkpoint(&self.checkpoint)?;
         ensure!(floor.generation == generation, "stale batch generation");
         let batch = store.batch(&manifest.id)?.context("batch disappeared")?;
@@ -275,7 +275,7 @@ impl Engine {
         );
         manifest.index(&request.context, true)?;
         let _lock = persistence::lock_guarded(&self.db, &self.checkpoint, guard)?;
-        let mut store = Store::open(&self.db, self.config)?;
+        let mut store = self.store()?;
         let floor = store.verify_checkpoint(&self.checkpoint)?;
         let batch = store.batch(&manifest.id)?.context("unknown batch")?;
         ensure!(batch.manifest == *manifest, "batch abort manifest changed");

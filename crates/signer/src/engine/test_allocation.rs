@@ -1,6 +1,6 @@
 //! Synthetic allocation fixture; production allocation remains the bootstrap workflow.
 use super::{
-    Coin, Digest, Engine, Pending, Phase, PredecessorKind, Result, Scalar, Store, TransferContext,
+    Coin, Digest, Engine, Pending, Phase, PredecessorKind, Result, Scalar, TransferContext,
     bootstrap, ensure, nonzero, nonzero_random, origin_previous_state, persistence, scalar,
 };
 
@@ -60,7 +60,7 @@ impl Engine {
         };
         coin.validate(&self.policy)?;
         let _lock = persistence::lock(&self.db, &self.checkpoint)?;
-        let mut store = Store::open(&self.db, self.config)?;
+        let mut store = self.store()?;
         let floor = store.verify_checkpoint(&self.checkpoint)?;
         store.allocate(&coin, &floor)?;
         store.publish(&self.checkpoint)

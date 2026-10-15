@@ -302,6 +302,19 @@ fn exit_crashes_never_replace_a_frozen_nonce_or_terminal_partial() -> Result<()>
         let response = h.reopen()?.handle(&issue)?;
         assert_eq!(response["partial"], json!(expected));
         assert_eq!(response, h.reopen()?.handle(&issue)?);
+        // Even if the proof relation admits another challenge for the frozen
+        // nonce, durable issuance may only return the first exact response.
+        let mut changed = issue.command.clone();
+        if let Command::ExitIssue { statement, .. } = &mut changed {
+            let mut binding = IssuanceBinding::decode(statement)?;
+            binding.signing.blinded_challenge = number(8);
+            *statement = binding.encode()?;
+        }
+        let changed = Request::sign(context.clone(), changed, &owner)?;
+        let calls = h.oracle.calls.load(Ordering::SeqCst);
+        assert!(h.reopen()?.handle(&changed).is_err());
+        assert_eq!(calls, h.oracle.calls.load(Ordering::SeqCst));
+        assert_eq!(response, h.reopen()?.handle(&issue)?);
         let (coin, _) = h.snapshot()?;
         assert_eq!(coin.server_secret, [0; 32]);
         assert!(coin.exit.as_ref().unwrap().nonce_secret.is_none());

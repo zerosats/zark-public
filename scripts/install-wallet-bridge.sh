@@ -76,12 +76,13 @@ install -m 755 "$bridge_source/services/wallet-bridge-tls-reload.sh" /usr/local/
 # Explicit Let's Encrypt avoids the default CA's email/EAB enrollment.
 install -d -m 700 /var/lib/zark-acme /var/lib/zark-acme/deployed
 if ! test -f /var/lib/zark-acme/acme.sh; then
-  curl -fL --proto '=https' --tlsv1.2 \
-    https://github.com/acmesh-official/acme.sh/archive/refs/tags/3.1.6.tar.gz \
-    -o "$bridge_source/acme.sh-3.1.6.tar.gz"
-  tar -xzf "$bridge_source/acme.sh-3.1.6.tar.gz" -C "$bridge_source"
-  (cd "$bridge_source/acme.sh-3.1.6" && sh ./acme.sh --install \
+  bridge_acme_stage=$(mktemp -d)
+  trap 'rm -rf -- "$bridge_acme_stage"' EXIT
+  bridge_acme_source=$(python3 "$bridge_source/scripts/prepare-acme-client.py" "$bridge_acme_stage")
+  (cd "$bridge_acme_source" && sh ./acme.sh --install \
     --home /var/lib/zark-acme --no-cron --no-profile)
+  rm -rf -- "$bridge_acme_stage"
+  trap - EXIT
 fi
 sh /var/lib/zark-acme/acme.sh --home /var/lib/zark-acme --set-default-ca --server letsencrypt
 if sh /var/lib/zark-acme/acme.sh --home /var/lib/zark-acme --issue --server letsencrypt --standalone \
@@ -130,6 +131,7 @@ After=network-online.target
 [Service]
 Type=oneshot
 UMask=0077
+Environment=ACME_PACKAGED=1
 ExecStart=/bin/sh /var/lib/zark-acme/acme.sh --cron --home /var/lib/zark-acme
 UNIT
 cat > /etc/systemd/system/zark-acme-renew.timer <<'UNIT'

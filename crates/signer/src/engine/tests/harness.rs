@@ -106,7 +106,8 @@ impl Harness {
             self.engine.control.clone(),
             self.engine.origin.clone(),
             false,
-        )
+        )?
+        .with_capacity_limits(self.engine.capacity_limits)
     }
     pub(super) fn snapshot(&self) -> Result<(Coin, u64)> {
         self.snapshot_for(&[2; 32])

@@ -122,7 +122,9 @@ fn cancellation_reuses_capacity_and_cannot_bypass_start_admission() -> Result<()
 #[ignore = "aggregate storage benchmark; run scripts/check-local.sh capacity-benchmark"]
 fn near_limit_storage_measurements() -> Result<()> {
     use std::time::Instant;
-    let h = Harness::new()?;
+    let mut h = Harness::new()?;
+    // Retain this fully populated 1,000-coin benchmark at its configured ceiling.
+    h.engine.capacity_limits.coins = 1000;
     h.origin()?;
     let template = h.snapshot()?.0;
     let issued = Store::open(&h.engine.db, h.engine.config)?
@@ -358,6 +360,182 @@ fn near_limit_storage_measurements() -> Result<()> {
             "restart_and_cancel_retry_ms":restart_and_retry_ms,"database_bytes":database_bytes,
             "peak_rss_bytes":peak_rss_bytes,
         })
+    );
+    Ok(())
+}
+
+#[test]
+fn lowering_capacity_preserves_allocations_retries_and_checkpoint() -> Result<()> {
+    let h = Harness::with_test_allocation(false)?;
+    let limited = h.reopen()?.with_capacity_limits(CapacityLimits {
+        coins: 1,
+        batches: 1,
+    })?;
+    let first = Request::sign(
+        h.origin_context.clone(),
+        Command::BootstrapAllocate {},
+        &h.alice,
+    )?;
+    let first_response = limited.handle(&first)?;
+    let mut context = h.origin_context.clone();
+    context.coin = random32();
+    context.operation = random32();
+    context.previous_state = origin_previous_state(&context.deployment, &context.coin)?;
+    let second = Request::sign(context, Command::BootstrapAllocate {}, &h.alice)?;
+    let checkpoint = fs::read(&h.engine.checkpoint)?;
+    assert_eq!(
+        limited.handle(&second).unwrap_err().to_string(),
+        "private coin capacity reached"
+    );
+    assert_eq!(checkpoint, fs::read(&h.engine.checkpoint)?);
+    assert_eq!(limited.handle(&first)?, first_response);
+    let expanded = h.reopen()?.with_capacity_limits(CapacityLimits {
+        coins: 2,
+        batches: 1,
+    })?;
+    let second_response = expanded.handle(&second)?;
+    let checkpoint = fs::read(&h.engine.checkpoint)?;
+    let lowered = h.reopen()?.with_capacity_limits(CapacityLimits {
+        coins: 1,
+        batches: 1,
+    })?;
+    lowered.repair_interrupted_checkpoint()?;
+    assert_eq!(lowered.handle(&first)?, first_response);
+    assert_eq!(lowered.handle(&second)?, second_response);
+    assert_eq!(
+        lowered.storage_usage()?,
+        json!({"coins":2,"coin_limit":1,
+        "batches":0,"batch_limit":1,"near_capacity":true})
+    );
+    assert_eq!(checkpoint, fs::read(&h.engine.checkpoint)?);
+    Ok(())
+}
+
+#[test]
+fn full_batch_registry_still_joins_completes_and_retrieves_existing_batch() -> Result<()> {
+    let mut b = BatchCase::new()?;
+    b.h.engine.capacity_limits = CapacityLimits {
+        coins: 1,
+        batches: 1,
+    };
+    b.reserve(0)?;
+    // A different manifest would create a new registry entry. Its failure must
+    // roll back the reservation and response without stranding the old batch.
+    let mut new_manifest = b.manifest.clone();
+    new_manifest.id = random32();
+    for member in &mut new_manifest.members {
+        member.operation = random32();
+    }
+    let mut context = b.senders[1].clone();
+    context.operation = new_manifest.members[1].operation;
+    context.scope = zark_protocol::handoff::OperationScope::Batch {
+        manifest_digest: new_manifest.digest()?,
+    };
+    let new_batch = b.h.request(
+        &context,
+        Command::BatchReserve {
+            manifest: new_manifest,
+            owner_authorization: placeholder_owner_authorization(),
+        },
+        &b.sender_keys[1],
+    )?;
+    let checkpoint = fs::read(&b.h.engine.checkpoint)?;
+    let coin = serde_json::to_vec(&b.h.snapshot_for(&context.coin)?)?;
+    assert_eq!(
+        b.h.engine.handle(&new_batch).unwrap_err().to_string(),
+        "batch capacity reached"
+    );
+    assert_eq!(checkpoint, fs::read(&b.h.engine.checkpoint)?);
+    assert_eq!(coin, serde_json::to_vec(&b.h.snapshot_for(&context.coin)?)?);
+    let ready = b.prepare_both()?;
+    assert_eq!(b.h.engine.storage_usage()?["batches"], 1);
+    let reopened = b.h.reopen()?;
+    assert_eq!(reopened.handle(&ready[0])?["pending"], true);
+    let response = reopened.handle(&ready[1])?;
+    assert_eq!(response["issued"], true);
+    assert_eq!(b.h.reopen()?.handle(&ready[1])?, response);
+    Ok(())
+}
+
+#[test]
+#[ignore = "expanded allocation registry benchmark; synthetic state and test proof oracle only"]
+fn expanded_registry_preserves_replay_and_exit() -> Result<()> {
+    use std::time::Instant;
+    let h = Harness::new()?;
+    h.origin()?;
+    let template = h.snapshot()?.0;
+    let issued = h
+        .engine
+        .store()?
+        .response_for(Purpose::DepositIssuance, &h.origin_context)?
+        .unwrap();
+    let retrieve = Request::sign(
+        h.origin_context.clone(),
+        Command::RetrieveIssued {
+            binding_digest: serde_json::from_value(issued["binding_digest"].clone())?,
+        },
+        &h.alice,
+    )?;
+    let count = CapacityLimits::default().coins;
+    let mut connection = Connection::open(&h.engine.db)?;
+    let tx = connection.transaction()?;
+    // Isolated synthetic rows, without claiming that these are funded coins.
+    // Leave one slot to exercise the real atomic allocation insertion path.
+    {
+        let mut insert = tx.prepare("INSERT INTO coins VALUES(?1,1,?2,?3)")?;
+        for i in 1..count - 1 {
+            let id = hash(&[b"expanded-capacity-fixture", &i.to_le_bytes()]);
+            let mut coin = template.clone();
+            coin.coin = id;
+            coin.current_session.coin = id;
+            coin.bootstrap = None;
+            coin.validate(&h.engine.policy)?;
+            let body = serde_json::to_string(&coin)?;
+            insert.execute(params![
+                id.as_slice(),
+                body,
+                hash(&[body.as_bytes()]).as_slice()
+            ])?;
+        }
+    }
+    tx.commit()?;
+    h.engine.store()?.publish(&h.engine.checkpoint)?;
+    let started = Instant::now();
+    let reopened = h.reopen()?;
+    let restart_ms = started.elapsed().as_millis();
+    let mut context = h.origin_context.clone();
+    context.coin = random32();
+    context.operation = random32();
+    context.previous_state = origin_previous_state(&context.deployment, &context.coin)?;
+    let last = Request::sign(context.clone(), Command::BootstrapAllocate {}, &h.alice)?;
+    let started = Instant::now();
+    let response = reopened.handle(&last)?;
+    let allocation_ms = started.elapsed().as_millis();
+    assert_eq!(reopened.storage_usage()?["coins"], count);
+    context.coin = random32();
+    context.operation = random32();
+    context.previous_state = origin_previous_state(&context.deployment, &context.coin)?;
+    let overflow = Request::sign(context, Command::BootstrapAllocate {}, &h.alice)?;
+    let checkpoint = fs::read(&h.engine.checkpoint)?;
+    assert_eq!(
+        reopened.handle(&overflow).unwrap_err().to_string(),
+        "private coin capacity reached"
+    );
+    assert_eq!(checkpoint, fs::read(&h.engine.checkpoint)?);
+    assert_eq!(reopened.handle(&last)?, response);
+    let started = Instant::now();
+    assert_eq!(reopened.handle(&retrieve)?, issued);
+    let retrieval_ms = started.elapsed().as_millis();
+    let (ctx, key, prepare) = h.exit_preparation()?;
+    reopened.handle(&prepare)?;
+    let issue = h.exit_issuance(&ctx, &key)?;
+    let exit = reopened.handle(&issue)?;
+    assert_eq!(h.reopen()?.handle(&issue)?, exit);
+    assert!(h.snapshot()?.0.phase == Phase::Terminal);
+    eprintln!(
+        "{}",
+        json!({"synthetic_registry_coins":count,"database_bytes":fs::metadata(&h.engine.db)?.len(),
+        "restart_ms":restart_ms,"allocation_ms":allocation_ms,"retrieval_ms":retrieval_ms})
     );
     Ok(())
 }
